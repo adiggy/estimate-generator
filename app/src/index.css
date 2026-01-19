@@ -95,4 +95,13 @@ body {
   .upsells-section {
     break-inside: avoid;
   }
+
+  /* Add breathing room at top of pages after breaks */
+  thead {
+    break-inside: avoid;
+  }
+
+  thead tr th {
+    padding-top: 0.5in;
+  }
 }
