@@ -12,8 +12,7 @@
   "date": "January 19, 2026",
   "expirationDate": "February 19, 2026",
   "projectDescription": "A custom web application that automates 75% of the Student Success Manager role for Colorado State University's six Cultural Resource Centers. According to the Transition Guide, the departing manager spent 50% of their time on Assessment Infrastructure (CSUID data management, RamLink uploads, index key coordination) and 25% on Project Management (deadline tracking, timeline coordination across centers). This application functions as a \"digital manager\" with three core modules: The Scrubber (data validation and formatting), The Scheduler (automated deadline reminders and task dashboards), and The Analyst (survey analysis and report generation). By embedding the institutional knowledge from the Transition Guide into software, the application ensures continuity, data accuracy, and compliance with hard deadlines (Feb 28 pre-surveys, May 9 post-surveys) while freeing CRC Directors to focus on direct student support.",
-  "estimatedTimeline": "8–10 weeks from project kickoff to launch, with training sessions scheduled in the final week.",
-
+  "estimatedTimeline": "10–14 weeks from project kickoff to launch, followed by 30 days of post-launch support.",
   "internalNotes": "Based on comprehensive 50+ page Transition Guide from outgoing Student Success Manager. The 75% figure comes directly from the SOP: 50% Assessment Infrastructure + 25% Project Management. Key hard deadlines referenced: Feb 28 (Spring pre-surveys), May 9 (Spring post-surveys), Sept 30 (Fall pre-surveys), Dec 12 (Fall post-surveys). 6 CRCs served: APACC, B/AACC, El Centro, NACC, Pride Resource Center, SAFE. CSUID format: 9 digits starting with 837. Index key format example: APACC.MENTOR.SP26. System outputs CSV files formatted for RamLink (no headers, specific column order).",
   "phases": [
     {
