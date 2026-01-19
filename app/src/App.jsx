@@ -497,7 +497,8 @@ function Editor({ proposal, onSave, templates }) {
 
         {/* Upsells */}
         <div className="mb-12 upsells-section">
-          <h3 className="text-sm font-medium text-slate-400 mb-4">Also Available</h3>
+          <h3 className="text-sm font-medium text-slate-400 mb-1">Also Available</h3>
+          <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
           <div className="grid grid-cols-3 gap-6">
             {upsells.map((upsell, i) => {
               const Icon = iconMap[upsell.icon]
