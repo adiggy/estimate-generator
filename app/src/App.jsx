@@ -212,6 +212,13 @@ function Editor({ proposal, onSave, templates }) {
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
+  // Set document title for PDF filename
+  useEffect(() => {
+    const parts = [data.projectName, data.clientCompany].filter(Boolean)
+    document.title = parts.join(' - ') || 'Proposal'
+    return () => { document.title = 'Estimate Generator' }
+  }, [data.projectName, data.clientCompany])
+
   // Auto-save on changes
   useEffect(() => {
     const timer = setTimeout(() => {
