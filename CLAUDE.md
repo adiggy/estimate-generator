@@ -164,7 +164,7 @@ This keeps `/input/` empty for future projects.
 Templates are stored in `/data/templates/` and contain:
 - `type` - identifier (web, logo, print, app)
 - `label` - display name
-- `benefits` - 6 items for "What's Included" section
+- `benefits` - 6-9 items for "What's Included" section (app has 9)
 - `upsells` - 3 items for "Also Available" section
 - `defaultPhases` - starting point phases (customize per project)
 - `monthlyFee` - default monthly fee (39 for web, 0 for others)
@@ -262,3 +262,39 @@ When asked to update a proposal:
 2. Review the original input documents in `{archivePath}/input/`
 3. Make requested changes to the proposal JSON
 4. Remind user to re-export PDF to the same archive folder
+
+---
+
+## PDF Export & Print Layout
+
+**PDF Filename:** Automatically set to `proposal_Project-Name_Client-Org.pdf`
+
+**Page Structure:**
+- Page 1: Header, title block, overview, What's Included (benefits grid)
+- Page 2+: Estimate table (headers repeat on each page if table overflows)
+- Final page: Estimated Timeline + Also Available (grouped together)
+
+**Print CSS Features:**
+- Section headings: Red (#bb2225), uppercase, bold
+- Table headers repeat at top of each page when estimate spans multiple pages
+- Totals section stays together (`break-inside: avoid`)
+- Timeline + Also Available grouped together, won't split across pages
+- 0.5" top padding on overflow pages for breathing room
+
+---
+
+## Timeline Estimation
+
+When estimating project timelines:
+- **Calculate hours to weeks:** Total hours ÷ 20-25 hrs/week = build weeks
+- **Add buffer:** +2-3 weeks for client review cycles
+- **University/institutional clients:** Add extra time for slower approval cycles
+
+**Typical ranges by project size:**
+| Hours | Timeline |
+|-------|----------|
+| 50-80 hrs | 4-6 weeks |
+| 100-150 hrs | 6-10 weeks |
+| 150-220 hrs | 10-14 weeks |
+
+Include post-launch support period if applicable (e.g., "followed by 30 days of post-launch support").
