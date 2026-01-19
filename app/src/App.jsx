@@ -348,44 +348,42 @@ function Editor({ proposal, onSave, templates }) {
         </header>
 
         {/* Title Block */}
-        <div className="mb-10">
-          <p className="text-sm text-slate-400 mb-1">Proposal for</p>
-          <h2 className="text-xl text-slate-900 mb-5">
+        <div className="mb-10 flex justify-between items-start">
+          <div>
+            <EditableText
+              value={data.projectName}
+              onChange={(val) => updateField('projectName', val)}
+              tag="h1"
+              className="text-3xl font-semibold text-slate-900 tracking-tight"
+            />
+            <div className="flex gap-4 mt-2 text-sm text-slate-400">
+              <EditableText
+                value={data.date}
+                onChange={(val) => updateField('date', val)}
+                tag="span"
+              />
+              {data.expirationDate && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-slate-400 mb-1">Proposal for</p>
             <EditableText
               value={data.clientName}
               onChange={(val) => updateField('clientName', val)}
-              tag="span"
-              className=""
+              tag="p"
+              className="text-lg text-slate-900"
             />
             {data.clientCompany && (
-              <>
-                <span className="text-slate-400">, </span>
-                <EditableText
-                  value={data.clientCompany}
-                  onChange={(val) => updateField('clientCompany', val)}
-                  tag="span"
-                  className=""
-                />
-              </>
-            )}
-          </h2>
-
-          <EditableText
-            value={data.projectName}
-            onChange={(val) => updateField('projectName', val)}
-            tag="h1"
-            className="text-3xl font-semibold text-slate-900 tracking-tight"
-          />
-          <div className="flex gap-4 mt-2 text-sm text-slate-400">
-            <EditableText
-              value={data.date}
-              onChange={(val) => updateField('date', val)}
-              tag="span"
-            />
-            {data.expirationDate && (
-              <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
-              </span>
+              <EditableText
+                value={data.clientCompany}
+                onChange={(val) => updateField('clientCompany', val)}
+                tag="p"
+                className="text-slate-500"
+              />
             )}
           </div>
         </div>
