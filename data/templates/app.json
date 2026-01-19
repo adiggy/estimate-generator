@@ -4,12 +4,12 @@
   "monthlyFee": 0,
   "benefits": [
     { "icon": "Zap", "title": "Workflow Automation", "description": "Eliminates repetitive manual tasks with intelligent processing." },
-    { "icon": "Shield", "title": "Data Validation", "description": "Catches errors before they cause problems downstream." },
+    { "icon": "RefreshCw", "title": "Data Validation", "description": "Catches errors before they cause problems downstream." },
     { "icon": "Layout", "title": "Intuitive Dashboard", "description": "Clear visibility into tasks, status, and deadlines at a glance." },
     { "icon": "Megaphone", "title": "Email Integration", "description": "Automated notifications sent directly to team inboxes." },
-    { "icon": "PenTool", "title": "Custom Branding", "description": "Your logo, colors, and identity throughout the application." },
+    { "icon": "Palette", "title": "Custom Branding", "description": "Your logo, colors, and identity throughout the application." },
     { "icon": "Smartphone", "title": "Fully Accessible", "description": "WCAG compliant and responsive across desktop, tablet, and mobile." },
-    { "icon": "Shield", "title": "Role-Based Access", "description": "Secure permissions ensure users only see data relevant to their role." },
+    { "icon": "PenTool", "title": "Role-Based Access", "description": "Secure permissions ensure users only see data relevant to their role." },
     { "icon": "Shield", "title": "Secure Data Handling", "description": "Encrypted storage protects sensitive information at rest and in transit." },
     { "icon": "BarChart3", "title": "Export & Reports", "description": "Download data and generate professional reports in multiple formats." }
   ],
