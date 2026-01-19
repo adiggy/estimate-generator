@@ -137,6 +137,8 @@ This keeps `/input/` empty for future projects.
 
   "projectDescription": "2-4 sentence overview of the project goals.",
 
+  "estimatedTimeline": "8-10 weeks from kickoff to launch.",  // Displayed after estimate
+
   "internalNotes": "Notes for Adrial only - won't print.",
 
   "phases": [],      // Customized per project (NOT from template)

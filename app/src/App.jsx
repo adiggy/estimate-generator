@@ -390,7 +390,7 @@ function Editor({ proposal, onSave, templates }) {
 
         {/* Overview */}
         <div className="mb-12">
-          <h3 className="text-sm font-medium text-slate-400 mb-3">Overview</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Overview</h3>
           <EditableText
             value={data.projectDescription}
             onChange={(val) => updateField('projectDescription', val)}
@@ -401,7 +401,7 @@ function Editor({ proposal, onSave, templates }) {
 
         {/* Benefits Grid */}
         <div className="mb-12">
-          <h3 className="text-sm font-medium text-slate-400 mb-4">What's Included</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">What's Included</h3>
           <div className="benefits-grid grid grid-cols-3 gap-6">
             {benefits.map((benefit, i) => {
               const Icon = iconMap[benefit.icon]
@@ -420,7 +420,7 @@ function Editor({ proposal, onSave, templates }) {
 
         {/* Estimate - Page 2 */}
         <div className="mb-12 break-before-page pt-12">
-          <h3 className="text-sm font-medium text-slate-400 mb-4">Estimate</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-4">Estimate</h3>
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200">
@@ -493,9 +493,20 @@ function Editor({ proposal, onSave, templates }) {
           </div>
         </div>
 
+        {/* Timeline */}
+        <div className="mb-12">
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">Estimated Timeline</h3>
+          <EditableText
+            value={data.estimatedTimeline || 'Timeline to be determined based on project start date.'}
+            onChange={(val) => updateField('estimatedTimeline', val)}
+            tag="p"
+            className="text-slate-600"
+          />
+        </div>
+
         {/* Upsells */}
         <div className="mb-12 upsells-section">
-          <h3 className="text-sm font-medium text-slate-400 mb-1">Also Available</h3>
+          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Also Available</h3>
           <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
           <div className="grid grid-cols-3 gap-6">
             {upsells.map((upsell, i) => {
