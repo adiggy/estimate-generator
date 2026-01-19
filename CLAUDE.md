@@ -130,6 +130,7 @@ This keeps `/input/` empty for future projects.
 
   "clientId": "client-slug",
   "clientName": "Client Full Name",
+  "clientCompany": "Organization Name",  // Optional, shown after client name
   "projectName": "Project Title",
   "date": "January 19, 2026",
   "expirationDate": "February 19, 2026",

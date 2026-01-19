@@ -350,12 +350,25 @@ function Editor({ proposal, onSave, templates }) {
         {/* Title Block */}
         <div className="mb-10">
           <p className="text-sm text-slate-400 mb-1">Proposal for</p>
-          <EditableText
-            value={data.clientName}
-            onChange={(val) => updateField('clientName', val)}
-            tag="h2"
-            className="text-xl text-slate-900 mb-5"
-          />
+          <h2 className="text-xl text-slate-900 mb-5">
+            <EditableText
+              value={data.clientName}
+              onChange={(val) => updateField('clientName', val)}
+              tag="span"
+              className=""
+            />
+            {data.clientCompany && (
+              <>
+                <span className="text-slate-400">, </span>
+                <EditableText
+                  value={data.clientCompany}
+                  onChange={(val) => updateField('clientCompany', val)}
+                  tag="span"
+                  className=""
+                />
+              </>
+            )}
+          </h2>
 
           <EditableText
             value={data.projectName}
@@ -541,6 +554,7 @@ function DashboardPage() {
   const createProposal = async () => {
     const newProposal = {
       clientName: 'New Client',
+      clientCompany: '',
       projectName: 'New Project',
       projectType: 'web',
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
