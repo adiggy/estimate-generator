@@ -493,19 +493,20 @@ function Editor({ proposal, onSave, templates }) {
           </div>
         </div>
 
-        {/* Timeline */}
-        <div className="mb-12">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Estimated Timeline</h3>
-          <EditableText
-            value={data.estimatedTimeline || 'Timeline to be determined based on project start date.'}
-            onChange={(val) => updateField('estimatedTimeline', val)}
-            tag="p"
-            className="text-slate-600"
-          />
-        </div>
-
-        {/* Upsells */}
+        {/* Timeline + Upsells - grouped together */}
         <div className="mb-12 upsells-section">
+          {/* Timeline */}
+          <div className="mb-8">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Estimated Timeline</h3>
+            <EditableText
+              value={data.estimatedTimeline || 'Timeline to be determined based on project start date.'}
+              onChange={(val) => updateField('estimatedTimeline', val)}
+              tag="p"
+              className="text-slate-600"
+            />
+          </div>
+
+          {/* Upsells */}
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">Also Available</h3>
           <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
           <div className="grid grid-cols-3 gap-6">
