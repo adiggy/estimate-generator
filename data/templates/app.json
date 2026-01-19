@@ -8,9 +8,10 @@
     { "icon": "Layout", "title": "Intuitive Dashboard", "description": "Clear visibility into tasks, status, and deadlines at a glance." },
     { "icon": "Megaphone", "title": "Email Integration", "description": "Automated notifications sent directly to team inboxes." },
     { "icon": "PenTool", "title": "Custom Branding", "description": "Your logo, colors, and identity throughout the application." },
-    { "icon": "Smartphone", "title": "Accessible & Responsive", "description": "WCAG compliant and works seamlessly on desktop, tablet, and mobile." },
+    { "icon": "Smartphone", "title": "Fully Accessible", "description": "WCAG compliant and responsive across desktop, tablet, and mobile." },
     { "icon": "Shield", "title": "Role-Based Access", "description": "Secure permissions ensure users only see data relevant to their role." },
-    { "icon": "Shield", "title": "Secure Data Handling", "description": "Encrypted storage protects sensitive information at rest and in transit." }
+    { "icon": "Shield", "title": "Secure Data Handling", "description": "Encrypted storage protects sensitive information at rest and in transit." },
+    { "icon": "BarChart3", "title": "Export & Reports", "description": "Download data and generate professional reports in multiple formats." }
   ],
   "upsells": [
     { "icon": "RefreshCw", "title": "Ongoing Maintenance", "description": "Updates, bug fixes, and feature enhancements over time." },
