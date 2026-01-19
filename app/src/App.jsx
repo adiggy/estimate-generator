@@ -215,7 +215,7 @@ function Editor({ proposal, onSave, templates }) {
   // Set document title for PDF filename
   useEffect(() => {
     const parts = [data.projectName, data.clientCompany].filter(Boolean)
-    document.title = parts.join(' - ') || 'Proposal'
+    document.title = 'proposal_' + parts.join(' - ') || 'Proposal'
     return () => { document.title = 'Estimate Generator' }
   }, [data.projectName, data.clientCompany])
 
