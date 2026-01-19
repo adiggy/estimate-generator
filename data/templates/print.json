@@ -1,0 +1,52 @@
+{
+  "type": "print",
+  "label": "Print & Marketing Materials",
+  "monthlyFee": 0,
+  "benefits": [
+    { "icon": "Palette", "title": "Custom Design", "description": "100% unique to your brand and message." },
+    { "icon": "Layout", "title": "Print-Ready Files", "description": "CMYK color, bleeds, and proper resolution." },
+    { "icon": "Zap", "title": "Fast Turnaround", "description": "Efficient process from concept to final files." },
+    { "icon": "RefreshCw", "title": "Revision Rounds", "description": "Iterative feedback to perfect the design." },
+    { "icon": "Shield", "title": "Source Files", "description": "Editable files for future updates." },
+    { "icon": "PenTool", "title": "Brand Consistency", "description": "Designs aligned with your visual identity." }
+  ],
+  "upsells": [
+    { "icon": "Megaphone", "title": "Print Coordination", "description": "Vendor selection, proofing, and production oversight." },
+    { "icon": "RefreshCw", "title": "Template System", "description": "Editable templates for ongoing in-house updates." },
+    { "icon": "Layout", "title": "Digital Versions", "description": "Web-optimized versions for email and social sharing." }
+  ],
+  "defaultPhases": [
+    {
+      "name": "Discovery & Planning",
+      "description": "Understand objectives, gather content, and define specifications.",
+      "lowHrs": 3,
+      "highHrs": 5,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Concept Design",
+      "description": "Create initial design concepts exploring layout, typography, and imagery.",
+      "lowHrs": 6,
+      "highHrs": 10,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Refinement & Revisions",
+      "description": "Refine selected direction with up to two revision rounds.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Final Production",
+      "description": "Prepare print-ready files with proper bleeds, marks, and color profiles.",
+      "lowHrs": 2,
+      "highHrs": 4,
+      "rate": 120,
+      "optional": false
+    }
+  ]
+}

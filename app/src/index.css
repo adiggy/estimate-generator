@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Gilmer';
+  src: url('/fonts/Gilmer-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Gilmer';
+  src: url('/fonts/Gilmer-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: 'Gilmer', system-ui, sans-serif;
+  --color-brand-red: #d72027;
+  --color-brand-orange: #f69220;
+  --color-brand-slate: #2b303a;
+  --color-brand-gray: #9ca3af;
+}
+
+body {
+  margin: 0;
+  font-family: 'Gilmer', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[contenteditable]:focus {
+  outline: 2px dashed #f69220;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+[contenteditable]:hover:not(:focus) {
+  background-color: rgba(247, 146, 32, 0.05);
+}
+
+.print-page {
+  width: 8.5in;
+  min-height: 11in;
+}
+
+@page {
+  size: letter;
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    width: 8.5in;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-page {
+    width: 8.5in;
+    min-height: auto;
+    padding: 0.6in;
+    margin: 0;
+    box-shadow: none !important;
+  }
+
+  [contenteditable] {
+    outline: none !important;
+    background: transparent !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .pricing-row {
+    break-inside: avoid;
+  }
+
+  .benefits-grid > div {
+    break-inside: avoid;
+  }
+
+  /* Keep totals section together */
+  .estimate-totals {
+    break-inside: avoid;
+  }
+
+  /* Keep upsells section together */
+  .upsells-section {
+    break-inside: avoid;
+  }
+}

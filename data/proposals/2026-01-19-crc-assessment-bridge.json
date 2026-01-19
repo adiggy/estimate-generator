@@ -1,0 +1,109 @@
+{
+  "id": "2026-01-19-crc-assessment-bridge",
+  "createdAt": "2026-01-19",
+  "updatedAt": "2026-01-19",
+  "status": "draft",
+  "projectType": "app",
+  "archivePath": "archive/csu-oie-crc-assessment-bridge",
+  "clientId": "csu-oie",
+  "clientName": "Chrisana Hughes",
+  "projectName": "CRC Assessment Bridge",
+  "date": "January 19, 2026",
+  "expirationDate": "February 19, 2026",
+  "projectDescription": "A custom web application that automates 75% of the Student Success Manager role for Colorado State University's six Cultural Resource Centers. According to the Transition Guide, the departing manager spent 50% of their time on Assessment Infrastructure (CSUID data management, RamLink uploads, index key coordination) and 25% on Project Management (deadline tracking, timeline coordination across centers). This application functions as a \"digital manager\" with three core modules: The Scrubber (data validation and formatting), The Scheduler (automated deadline reminders and task dashboards), and The Analyst (survey analysis and report generation). By embedding the institutional knowledge from the Transition Guide into software, the application ensures continuity, data accuracy, and compliance with hard deadlines (Feb 28 pre-surveys, May 9 post-surveys) while freeing CRC Directors to focus on direct student support.",
+  "internalNotes": "Based on comprehensive 50+ page Transition Guide from outgoing Student Success Manager. The 75% figure comes directly from the SOP: 50% Assessment Infrastructure + 25% Project Management. Key hard deadlines referenced: Feb 28 (Spring pre-surveys), May 9 (Spring post-surveys), Sept 30 (Fall pre-surveys), Dec 12 (Fall post-surveys). 6 CRCs served: APACC, B/AACC, El Centro, NACC, Pride Resource Center, SAFE. CSUID format: 9 digits starting with 837. Index key format example: APACC.MENTOR.SP26. System outputs CSV files formatted for RamLink (no headers, specific column order).",
+  "phases": [
+    {
+      "name": "Discovery & Database Architecture",
+      "description": "Document the complete assessment workflow from the Transition Guide. Define database schema for 6 CRCs, events, cohorts, and the academic year timeline. Design encryption approach for CSUID data storage. Map user roles (Directors, Admin) and access permissions.",
+      "lowHrs": 12,
+      "highHrs": 16,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Module A: The Scrubber (Data Integrity Engine)",
+      "description": "Build the drag-and-drop file processor that validates and cleans attendance data. Implement CSUID validation (9-digit format starting with 837), duplicate detection, and error flagging. Create the Index Key generator using the documented format (CRC.PROGRAM.TERM). Output RamLink-ready CSV files (stripped headers, correct column order).",
+      "lowHrs": 28,
+      "highHrs": 36,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Module B: The Scheduler (Project Management Automation)",
+      "description": "Implement the Academic Year Timeline with all hard deadlines from the Transition Guide (Feb 28, May 9, Sept 30, Dec 12). Build the task dashboard showing active tasks per user. Create automated email notification system (2 weeks, 1 week, 1 day before deadlines). Track CSUID upload status within 2-3 week windows per event.",
+      "lowHrs": 22,
+      "highHrs": 28,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Module C: The Analyst (Reporting Automation)",
+      "description": "Build the survey ingestion system to import Qualtrics exports. Implement pre/post survey matching by CSUID to calculate growth metrics (Belonging, Confidence). Generate visual charts for demographics, retention trends, and learning outcomes. Create PDF export for Annual Program Impact Reports.",
+      "lowHrs": 26,
+      "highHrs": 34,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "User Interface & Dashboard",
+      "description": "Design and build the login system with role-based access (Directors see only their Center's data). Create the main dashboard with task cards, deadline countdown, and quick actions. Build the event/cohort management screens. Implement responsive design for desktop and tablet use.",
+      "lowHrs": 20,
+      "highHrs": 26,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Quality Assurance",
+      "description": "Comprehensive testing including unit tests for all modules, integration testing across the full workflow, security audit of CSUID encryption and role-based access controls, and user acceptance testing with CRC staff. Validate output files against RamLink requirements.",
+      "lowHrs": 18,
+      "highHrs": 24,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Documentation",
+      "description": "Create comprehensive user guide for CRC Directors, admin manual for system management, system architecture documentation for future maintenance, and troubleshooting guide for common issues. All documentation delivered in PDF and web-accessible formats.",
+      "lowHrs": 12,
+      "highHrs": 16,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Training & Onboarding",
+      "description": "Three training sessions: (1) Introduction for all CRC Directors covering daily workflows, (2) Advanced features session for power users including report customization, (3) Admin training for system management and user provisioning. Includes recorded video walkthroughs for future staff onboarding.",
+      "lowHrs": 12,
+      "highHrs": 16,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Deployment & Launch",
+      "description": "Production server setup, hosting configuration, DNS configuration, SSL certificates, and go-live support. Includes data migration assistance and verification that all 6 CRCs can access their respective dashboards.",
+      "lowHrs": 6,
+      "highHrs": 8,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "30-Day Post-Launch Support",
+      "description": "Dedicated support period after go-live including bug fixes, minor adjustments based on real-world usage, Q&A support via email, and one check-in call per week (4 total). Ensures smooth transition and addresses any issues discovered during initial use.",
+      "lowHrs": 12,
+      "highHrs": 16,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "discountPercent": 0,
+  "monthlyFee": 0,
+  "paymentTerms": {
+    "depositPercent": 50,
+    "schedule": "50% upon project start, 50% upon delivery"
+  },
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

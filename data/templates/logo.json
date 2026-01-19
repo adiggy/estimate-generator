@@ -1,0 +1,52 @@
+{
+  "type": "logo",
+  "label": "Logo & Brand Identity",
+  "monthlyFee": 0,
+  "benefits": [
+    { "icon": "Palette", "title": "Original Artwork", "description": "100% custom design, never templates or clip art." },
+    { "icon": "RefreshCw", "title": "Revision Rounds", "description": "Iterative feedback process to perfect the design." },
+    { "icon": "Layout", "title": "Multiple Concepts", "description": "Explore different creative directions before committing." },
+    { "icon": "Zap", "title": "Vector Files", "description": "Scalable formats that stay crisp at any size." },
+    { "icon": "Smartphone", "title": "Logo Portal Access", "description": "Download any format, size, or file type whenever you need it." },
+    { "icon": "Shield", "title": "Full Ownership", "description": "Complete rights and source files delivered to you." }
+  ],
+  "upsells": [
+    { "icon": "PenTool", "title": "Brand Guidelines", "description": "Document specifying colors, typography, spacing, and usage rules." },
+    { "icon": "Layout", "title": "Stationery Suite", "description": "Business cards, letterhead, and envelope designs." },
+    { "icon": "Megaphone", "title": "Social Media Kit", "description": "Profile images, cover photos, and post templates." }
+  ],
+  "defaultPhases": [
+    {
+      "name": "Discovery & Concepting",
+      "description": "Review existing materials, research visual language, and develop initial concept sketches.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Initial Design Exploration",
+      "description": "Present 2-3 distinct logo concepts with variations showing different applications.",
+      "lowHrs": 8,
+      "highHrs": 12,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Refinement & Revisions",
+      "description": "Refine selected concept based on feedback. Includes up to two revision rounds.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Final Delivery",
+      "description": "Complete logo package: vector source files (AI, EPS, SVG), high-res rasters (PNG, JPG) in RGB and CMYK.",
+      "lowHrs": 2,
+      "highHrs": 4,
+      "rate": 120,
+      "optional": false
+    }
+  ]
+}

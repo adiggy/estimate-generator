@@ -1,0 +1,68 @@
+{
+  "id": "2026-01-19-nc-process-2-logo",
+  "createdAt": "2026-01-19",
+  "updatedAt": "2026-01-19",
+  "status": "draft",
+  "projectType": "logo",
+  "archivePath": "archive/walden-nc-process-2-logo",
+
+  "clientId": "walden-unc",
+  "clientName": "Sarah Walden",
+  "projectName": "NC ProCESS 2 Logo Refresh",
+  "date": "January 19, 2026",
+  "expirationDate": "February 18, 2026",
+
+  "projectDescription": "A refreshed visual identity for the second wave of the North Carolina Prostate Cancer Comparative Effectiveness & Survivorship Study. The new logo will maintain brand recognition through the iconic NC state outline and awareness ribbon while introducing a contemporary look that distinguishes this phase of research. The \"2\" will be a prominent design element, rendered in Carolina Blue tones.",
+
+  "internalNotes": "Academic client at UNC. Study has been running 10+ years - this is wave 2. They want quick turnaround. Existing assets provided for reference (full and mini logo versions). Creative freedom given. Key elements: Carolina Blue, NC state outline, awareness ribbon, \"2\" should stand out.",
+
+  "phases": [
+    {
+      "name": "Discovery & Concepting",
+      "description": "Review existing NC ProCESS branding, research prostate cancer awareness visual language, and develop initial concept sketches exploring how to integrate the \"2\" with the established NC/ribbon imagery.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Initial Design Exploration",
+      "description": "Present 2-3 distinct logo concepts in Carolina Blue palette. Each direction will show full lockup and compact versions, demonstrating how the \"2\" is featured while honoring the study's heritage.",
+      "lowHrs": 8,
+      "highHrs": 12,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Refinement & Revisions",
+      "description": "Refine the selected concept based on team feedback. Includes up to two rounds of revisions to perfect typography, proportions, color values, and overall balance.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Final Delivery",
+      "description": "Deliver complete logo package: vector source files (AI, EPS, SVG), high-res rasters (PNG, JPG) in RGB and CMYK, plus compact/mini versions for varied applications.",
+      "lowHrs": 2,
+      "highHrs": 4,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+
+  "discountPercent": 0,
+  "monthlyFee": 0,
+
+  "paymentTerms": {
+    "depositPercent": 50,
+    "schedule": ""
+  },
+
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

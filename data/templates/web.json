@@ -1,0 +1,60 @@
+{
+  "type": "web",
+  "label": "Website / Web App",
+  "monthlyFee": 39,
+  "benefits": [
+    { "icon": "Palette", "title": "Custom Design", "description": "100% unique to your needs, vision and style." },
+    { "icon": "Layout", "title": "Modern Code", "description": "CSS3/HTML5 compliance for smooth rendering." },
+    { "icon": "Smartphone", "title": "Responsive", "description": "Adapts to desktops, tablets, and phones." },
+    { "icon": "BarChart3", "title": "Analytics", "description": "Track visitors, clicks, and engagement." },
+    { "icon": "Shield", "title": "SSL Security", "description": "Secure site with SEO ranking boost." },
+    { "icon": "Zap", "title": "Fast Hosting", "description": "99.9% uptime on global CDN servers." }
+  ],
+  "upsells": [
+    { "icon": "Megaphone", "title": "Content & SEO Strategy", "description": "Keyword research, content calendar, and on-page optimization to drive organic traffic." },
+    { "icon": "RefreshCw", "title": "Ongoing Retainer", "description": "Monthly design updates, performance monitoring, and priority support." },
+    { "icon": "PenTool", "title": "Brand Identity Package", "description": "Logo design, color palette, typography, and brand guidelines document." }
+  ],
+  "defaultPhases": [
+    {
+      "name": "Discovery & Research",
+      "description": "Requirements gathering, competitive analysis, and technical research.",
+      "lowHrs": 8,
+      "highHrs": 15,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Wireframing & Architecture",
+      "description": "Site structure, user flows, and wireframe layouts.",
+      "lowHrs": 15,
+      "highHrs": 25,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Design & Prototyping",
+      "description": "High-fidelity mockups and interactive prototypes.",
+      "lowHrs": 25,
+      "highHrs": 40,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Frontend Development",
+      "description": "HTML/CSS/JS implementation with responsive behavior.",
+      "lowHrs": 40,
+      "highHrs": 80,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Launch",
+      "description": "Cross-browser testing, deployment, and client training.",
+      "lowHrs": 10,
+      "highHrs": 20,
+      "rate": 120,
+      "optional": false
+    }
+  ]
+}

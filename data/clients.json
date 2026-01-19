@@ -1,0 +1,37 @@
+{
+  "clients": [
+    {
+      "id": "walden-unc",
+      "name": "Sarah Walden",
+      "company": "UNC / NC ProCESS Study",
+      "email": "sarah_walden@unc.edu",
+      "phone": "919-412-2795",
+      "discountPercent": 0,
+      "notes": "Prostate cancer survivorship research study at UNC. Second wave of NC ProCESS study (10+ years running). Academic client."
+    },
+    {
+      "id": "frerichs",
+      "name": "Leah Frerichs",
+      "company": "UNC / NC CORE",
+      "email": "leah.frerichs@unc.edu",
+      "discountPercent": 0,
+      "notes": "Opioid settlement research project. Academic client."
+    },
+    {
+      "id": "sample-longtime",
+      "name": "Jane Smith",
+      "company": "Smith Consulting",
+      "email": "jane@smithconsulting.com",
+      "discountPercent": 15,
+      "notes": "Long-term client since 2019. Always pays on time."
+    },
+    {
+      "id": "csu-oie",
+      "name": "Chrisana Hughes",
+      "company": "Colorado State University / Office for Inclusive Excellence",
+      "email": "",
+      "discountPercent": 0,
+      "notes": "CRC Assessment Bridge project. Contact for Cultural Resource Centers assessment automation."
+    }
+  ]
+}

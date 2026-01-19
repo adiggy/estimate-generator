@@ -1,0 +1,19 @@
+{
+  "name": "estimate-generator",
+  "version": "1.0.0",
+  "description": "Design Proposal Generator",
+  "main": "server.js",
+  "scripts": {
+    "api": "node server.js",
+    "dev": "cd app && npm run dev",
+    "start": "node server.js & (cd app && npm run dev)"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.2.1"
+  }
+}

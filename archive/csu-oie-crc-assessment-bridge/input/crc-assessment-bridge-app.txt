@@ -1,0 +1,136 @@
+Project Overview: CRC Assessment Bridge Application
+Automating the Student Success Manager Infrastructure
+
+Date: January 19, 2026 Prepared For: Office for Inclusive Excellence & CRC Leadership
+
+1. Executive Summary
+With the departure of the Student Success Manager, the six Cultural Resource Centers (CRCs) face a significant operational risk. The Transition Guide indicates that 75% of this role's time was dedicated to Assessment Infrastructure (50%) and Project Management (25%).
+
+
+We propose developing the CRC Assessment Bridge, a custom web application designed to automate these specific duties. This tool will function as a "digital manager," ensuring data integrity, enforcing deadlines, and generating impact reports automatically. This allows existing CRC Directors to maintain compliance with minimal time investment, preserving their capacity for direct student support.
+
+2. Strategic Approach: The "Staging Bridge"
+To ensure rapid development and maximum security, this application will not require direct integration with University databases (RamLink, Navigate, or Banner).
+
+Instead, it functions as an intelligent Staging Area:
+
+Input: Staff upload "messy" raw data (sign-in sheets, survey exports).
+
+Processing: The system cleans, validates, and analyzes the data using the strict protocols defined in the Transition Guide.
+
+Output: The system provides "perfect" files ready for upload to university systems, along with automated impact reports.
+
+This approach creates a secure "air gap" that simplifies IT compliance while eliminating the manual labor previously required to scrub data.
+
+3. Core Functional Modules
+The application replaces the manual workload with three automated engines:
+
+Module A: The Scheduler (Project Management Automation)
+Replaces the 25% of the role focused on coordinating timelines and managing deadlines.
+
+
+The Problem: The assessment cycle relies on strict "Hard Deadlines" (e.g., Feb 28 for Pre-Surveys, May 9 for Post-Surveys). Missing these gaps results in a loss of retention data.
+
+
+
+
+The Solution: The system is hard-coded with the "Full Academic Year Timeline" (Appendix B).
+
+Key Features:
+
+Automated "Nags": Sends personalized emails to Directors 2 weeks, 1 week, and 1 day before critical windows.
+
+Task Dashboard: When a user logs in, they see only active tasks (e.g., "Action Required: Upload Spring Cohort CSV").
+
+Module B: The Scrubber (Data Integrity Engine)
+Replaces the manual cleaning of Excel sheets and generation of Index Keys.
+
+The Problem: RamLink requires strict formatting (CSV only, no headers). CSUIDs must be 9 digits starting with "837". Index Keys must be generated to link events to Institutional Research (IR) data.
+
+
+
+The Solution: A drag-and-drop interface that sanitizes data instantly.
+
+Key Features:
+
+
+Index Key Generator: Automatically creates the correct code (e.g., APACC.MENTOR.SP26) to paste into RamLink, ensuring IR can track the students.
+
+Error Detection: Instantly flags invalid IDs (e.g., missing digits, wrong prefix) or duplicates before the user tries to upload to RamLink.
+
+Auto-Formatting: Converts any Excel file into the exact CSV format RamLink requires, stripping headers and extra columns automatically.
+
+Module C: The Analyst (Reporting Automation)
+Replaces the manual compilation of annual reports.
+
+
+The Problem: Creating the "Annual Program Impact Report" requires merging data from Qualtrics and RamLink to calculate metrics like "Belonging" and "Confidence" .
+
+
+The Solution: An automated reporting engine.
+
+Key Features:
+
+Survey Ingestion: Staff upload raw survey exports. The system matches "Pre" and "Post" responses by CSUID to calculate growth.
+
+Visual Generation: Automatically creates the charts and tables required for the Annual Report (demographics, retention trends, learning outcomes).
+
+PDF Export: Generates a formatted report ready for leadership review.
+
+4. User Workflow: A Day in the Life
+Here is how the system simplifies the workflow for a CRC Director (e.g., APACC):
+
+Notification: The Director receives an automated email: "Action Required: Upload attendance for yesterday's 'Tea with Tutors' event."
+
+Login & Setup: They log in. The dashboard asks: "Was this a new event?" They select "Yes."
+
+
+Key Generation: The system generates the Index Key (APACC.TUTOR.SP26.U) and displays it in bold text with instructions: "Copy this key into your RamLink event description." 
+
+Data Cleaning: The Director drags their raw sign-in sheet onto the screen.
+
+System Alert: "Row 4 has a typo. Row 10 is a duplicate."
+
+The Director fixes Row 4 in the browser.
+
+Final Export: The system provides a file named FINAL_UPLOAD_RamLink.csv.
+
+Hand-off: The Director logs into RamLink (external) and uploads the clean file, knowing it will be accepted 100% of the time.
+
+5. Security & Compliance Architecture
+We treat student data (CSUIDs) with the highest level of care, adhering to data privacy standards.
+
+Encryption: All CSUIDs are encrypted at rest in the database.
+
+Data Minimization: For the "Scrubber" module, raw files are processed in memory and wiped immediately after the clean file is generated.
+
+Role-Based Access: Directors can only access data relevant to their specific Center (e.g., NACC cannot view Pride Resource Center data).
+
+No API Risk: By avoiding direct API connections to student databases, we eliminate the risk of unauthorized write-access to the university system.
+
+6. Implementation Phases
+Phase 1: The Foundation & Scrubber (Weeks 1-3)
+
+Setup of secure database and encryption.
+
+Launch of the "Scrubber" tool to handle immediate RamLink upload needs.
+
+Outcome: Staff can immediately stop manually formatting Excel sheets.
+
+Phase 2: The Scheduler (Weeks 4-5)
+
+Implementation of the Academic Year Timeline logic.
+
+Configuration of automated email reminders.
+
+Outcome: Staff are automatically reminded of the Feb 28 and May 9 deadlines.
+
+Phase 3: The Analyst & Reporting (Weeks 6-8)
+
+Development of the survey ingestion engine.
+
+Creation of the PDF report templates.
+
+Outcome: Automated generation of the End-of-Year Impact Reports.
+
+Conclusion: The CRC Assessment Bridge transforms a complex, 30-hour/week manual job into a streamlined, automated workflow. It captures the institutional knowledge of the "Transition Guide" and embeds it into software, ensuring continuity and data accuracy for the 2025-26 academic year and beyond.

@@ -1,0 +1,69 @@
+{
+  "id": "2026-01-08-frerichs-opioid-hub",
+  "createdAt": "2026-01-08",
+  "updatedAt": "2026-01-19",
+  "status": "draft",
+  "projectType": "web",
+  "archivePath": "archive/frerichs-opioid-hub",
+  "clientId": "frerichs",
+  "clientName": "Leah Frerichs",
+  "projectName": "Opioid Settlement Decision Hub",
+  "date": "January 8, 2026",
+  "expirationDate": "February 8, 2026",
+  "projectDescription": "The goal is to move from static planning to an active, digital decision-support engine. This platform will empower North Carolina county leaders to transform complex opioid settlement data into actionable, research-backed funding strategies.",
+  "internalNotes": "Client referred by UNC. Budget is grant-funded so timeline flexibility is good. Key deadline is March 31 pilot.",
+  "phases": [
+    {
+      "name": "Brand Identity & Technical Discovery",
+      "description": "Development of a standalone visual identity distinct from existing branding. Ingest research-validated Excel formulas to map JavaScript logic.",
+      "lowHrs": 18,
+      "highHrs": 22,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Technical Architecture & Infrastructure",
+      "description": "Establishment of the secure database and authentication system. Wireframing of the dashboard and overarching site structure.",
+      "lowHrs": 30,
+      "highHrs": 35,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Pilot App Development",
+      "description": "Development of the core functionality for the pilot deadline. Focus on the functional logic of the 5-step path.",
+      "lowHrs": 80,
+      "highHrs": 90,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "High-Fidelity Refinement & Reporting",
+      "description": "Refinement of UI/UX based on beta testing. Build dynamic reporting engine and implement project forking logic.",
+      "lowHrs": 75,
+      "highHrs": 80,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Launch & Optimization",
+      "description": "Rollout of CMS and admin portal, followed by dedicated support for optimizing user flow and bug fixes.",
+      "lowHrs": 38,
+      "highHrs": 40,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "discountPercent": 0,
+  "monthlyFee": 39,
+  "paymentTerms": {
+    "depositPercent": 50,
+    "schedule": "50% deposit to begin, 50% upon completion"
+  },
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

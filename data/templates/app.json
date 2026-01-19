@@ -1,0 +1,60 @@
+{
+  "type": "app",
+  "label": "Web Application / Online Tool",
+  "monthlyFee": 0,
+  "benefits": [
+    { "icon": "Zap", "title": "Workflow Automation", "description": "Eliminates repetitive manual tasks with intelligent processing." },
+    { "icon": "Shield", "title": "Data Validation", "description": "Catches errors before they cause problems downstream." },
+    { "icon": "Layout", "title": "Intuitive Dashboard", "description": "Clear visibility into tasks, status, and deadlines at a glance." },
+    { "icon": "Megaphone", "title": "Email Integration", "description": "Automated notifications sent directly to team inboxes." },
+    { "icon": "PenTool", "title": "Custom Branding", "description": "Your logo, colors, and identity throughout the application." },
+    { "icon": "Smartphone", "title": "Responsive Design", "description": "Works seamlessly on desktop, tablet, and mobile devices." }
+  ],
+  "upsells": [
+    { "icon": "RefreshCw", "title": "Ongoing Maintenance", "description": "Updates, bug fixes, and feature enhancements over time." },
+    { "icon": "Zap", "title": "Priority Support", "description": "Dedicated support channel with faster response times and scheduled check-ins." },
+    { "icon": "Layout", "title": "API Access", "description": "Programmatic access for integrations with other systems and custom workflows." }
+  ],
+  "defaultPhases": [
+    {
+      "name": "Discovery & Requirements",
+      "description": "Document workflows, define user roles, and map system requirements.",
+      "lowHrs": 8,
+      "highHrs": 12,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Architecture & Design",
+      "description": "Database structure, user interface wireframes, and system architecture.",
+      "lowHrs": 12,
+      "highHrs": 18,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Core Development",
+      "description": "Build application functionality, user authentication, and data processing.",
+      "lowHrs": 40,
+      "highHrs": 60,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Refinement",
+      "description": "Quality assurance, user acceptance testing, and bug fixes.",
+      "lowHrs": 10,
+      "highHrs": 15,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Deployment & Training",
+      "description": "Launch to production, user documentation, and training session.",
+      "lowHrs": 6,
+      "highHrs": 10,
+      "rate": 120,
+      "optional": false
+    }
+  ]
+}
