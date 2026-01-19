@@ -214,8 +214,9 @@ function Editor({ proposal, onSave, templates }) {
 
   // Set document title for PDF filename
   useEffect(() => {
-    const parts = [data.projectName, data.clientCompany].filter(Boolean)
-    document.title = 'proposal_' + parts.join(' - ') || 'Proposal'
+    const toHyphenated = (str) => str?.replace(/\s+/g, '-') || ''
+    const parts = [data.projectName, data.clientCompany].filter(Boolean).map(toHyphenated)
+    document.title = parts.length ? 'proposal_' + parts.join('_') : 'Proposal'
     return () => { document.title = 'Estimate Generator' }
   }, [data.projectName, data.clientCompany])
 
