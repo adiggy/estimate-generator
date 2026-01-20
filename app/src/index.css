@@ -90,6 +90,12 @@ body {
     display: none !important;
   }
 
+  /* Make links look like normal text in print */
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+
   .print-page {
     width: auto;
     min-height: auto;
