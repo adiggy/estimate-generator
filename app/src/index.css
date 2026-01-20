@@ -29,6 +29,7 @@ body {
   font-family: 'Gilmer', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 [contenteditable]:focus {
@@ -42,15 +43,30 @@ body {
 }
 
 .print-page {
-  width: 8.5in;
-  min-height: 11in;
+  max-width: 8.5in;
+  width: 100%;
+  min-height: auto;
+}
+
+@media (min-width: 8.5in) {
+  .print-page {
+    min-height: 11in;
+  }
 }
 
 /* Page break indicator in preview */
 .page-break-indicator {
-  margin-left: -0.6in;
-  margin-right: -0.6in;
-  padding: 0 0.6in;
+  margin-left: -1rem;
+  margin-right: -1rem;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .page-break-indicator {
+    margin-left: -0.6in;
+    margin-right: -0.6in;
+    padding: 0 0.6in;
+  }
 }
 
 @page {
