@@ -206,24 +206,31 @@ const MarkdownContent = ({ content }) => {
   return <>{elements}</>
 }
 
-// Visual page break indicator for preview
-const PageBreak = () => (
-  <div className="page-break-indicator no-print relative my-8">
-    <div className="border-t-2 border-dashed border-slate-300"></div>
-    <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-slate-50 px-3 text-xs text-slate-400 uppercase tracking-wide">
-      Page Break
-    </span>
-  </div>
-)
+// Visual page break indicator for preview (hidden in view mode)
+const PageBreak = ({ hidden = false }) => {
+  if (hidden) return null
+  return (
+    <div className="page-break-indicator no-print relative my-8">
+      <div className="border-t-2 border-dashed border-slate-300"></div>
+      <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-slate-50 px-3 text-xs text-slate-400 uppercase tracking-wide">
+        Page Break
+      </span>
+    </div>
+  )
+}
 
 // Table of contents component
-const TableOfContents = ({ sections }) => (
+const TableOfContents = ({ sections, showPageNumbers = true }) => (
   <div className="mb-8 p-4 bg-slate-50 rounded-lg print:bg-transparent print:p-0 print:mb-6">
     <h4 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">In This Proposal</h4>
     <div className="space-y-1 text-sm">
       {sections.map((section, i) => (
         <div key={i} className="text-slate-600">
-          <span className="text-slate-400 tabular-nums inline-block w-8">p. {section.page}</span>
+          {showPageNumbers ? (
+            <span className="text-slate-400 tabular-nums inline-block w-8">p. {section.page}</span>
+          ) : (
+            <span className="hidden print:inline-block text-slate-400 tabular-nums w-8">p. {section.page}</span>
+          )}
           <span>{section.title}</span>
         </div>
       ))}
@@ -296,7 +303,7 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly
           )}
         </div>
       </td>
-      <td className="py-3 px-4 text-center text-sm text-slate-600 align-top whitespace-nowrap">
+      <td className="hidden sm:table-cell py-3 px-4 text-center text-sm text-slate-600 align-top whitespace-nowrap print:table-cell">
         {readOnly ? (
           <>{phase.lowHrs}–{phase.highHrs}</>
         ) : (
@@ -553,7 +560,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
       )}
 
       {/* Document */}
-      <div className="print-page mx-auto bg-white shadow-sm p-[0.6in] print:shadow-none">
+      <div className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-[0.6in] print:shadow-none">
         {/* Header */}
         <header className="flex justify-between items-start mb-12">
           <Logo />
@@ -639,31 +646,34 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         </div>
 
         {/* Table of Contents */}
-        <TableOfContents sections={(() => {
-          const sections = [
-            { title: "What's Included", page: 2 },
-            { title: 'Estimate', page: 3 },
-            { title: 'Timeline & Also Available', page: 4 },
-          ]
-          let nextPage = 5
-          if ((data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes)) {
-            sections.push({ title: 'Design & Hosting Includes', page: nextPage++ })
-          }
-          if (data.projectSpecifics) {
-            sections.push({ title: 'Project Specifics', page: nextPage++ })
-          }
-          if (data.exclusions) {
-            sections.push({ title: 'What Is Not Included', page: nextPage })
-          }
-          return sections
-        })()} />
+        <TableOfContents
+          showPageNumbers={!isViewMode}
+          sections={(() => {
+            const sections = [
+              { title: "What's Included", page: 2 },
+              { title: 'Estimate', page: 3 },
+              { title: 'Timeline & Also Available', page: 4 },
+            ]
+            let nextPage = 5
+            if ((data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes)) {
+              sections.push({ title: 'Design & Hosting Includes', page: nextPage++ })
+            }
+            if (data.projectSpecifics) {
+              sections.push({ title: 'Project Specifics', page: nextPage++ })
+            }
+            if (data.exclusions) {
+              sections.push({ title: 'What Is Not Included', page: nextPage })
+            }
+            return sections
+          })()}
+        />
 
         {/* Benefits Grid - Page 2 */}
-        <PageBreak />
+        <PageBreak hidden={isViewMode} />
         <div className="mb-12 break-before-page">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">What's Included</h3>
           <p className="text-sm text-slate-400 mb-4">Here's what you'll get with this project.</p>
-          <div className="benefits-grid grid grid-cols-3 gap-6">
+          <div className="benefits-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
             {benefits.map((benefit, i) => {
               const Icon = iconMap[benefit.icon]
               return (
@@ -680,15 +690,15 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         </div>
 
         {/* Estimate - Page 2 */}
-        <PageBreak />
+        <PageBreak hidden={isViewMode} />
         <div className="mb-12 break-before-page">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Estimate</h3>
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-2 text-sm font-medium text-slate-400">Phase</th>
-                <th className="text-center py-2 text-sm font-medium text-slate-400 w-24">Hours</th>
-                <th className="text-right py-2 text-sm font-medium text-slate-400 w-44">Cost</th>
+                <th className="hidden sm:table-cell text-center py-2 text-sm font-medium text-slate-400 w-24 print:table-cell">Hours</th>
+                <th className="text-right py-2 text-sm font-medium text-slate-400 w-28 sm:w-44">Cost</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -705,8 +715,8 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
                 {discount > 0 && (
                   <tr>
                     <td className="py-2 text-sm text-slate-500">Subtotal</td>
-                    <td className="w-24"></td>
-                    <td className="py-2 text-right text-sm text-slate-500 whitespace-nowrap w-44">
+                    <td className="hidden sm:table-cell w-24 print:table-cell"></td>
+                    <td className="py-2 text-right text-sm text-slate-500 whitespace-nowrap w-28 sm:w-44">
                       ${subtotal.lowTotal.toLocaleString()}–${subtotal.highTotal.toLocaleString()}
                     </td>
                   </tr>
@@ -714,7 +724,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
                 {discount > 0 && (
                   <tr>
                     <td className="py-2 text-sm text-green-600">Discount ({discount}%)</td>
-                    <td></td>
+                    <td className="hidden sm:table-cell print:table-cell"></td>
                     <td className="py-2 text-right text-sm text-green-600 whitespace-nowrap">
                       -${(subtotal.lowTotal * discount / 100).toLocaleString()}–${(subtotal.highTotal * discount / 100).toLocaleString()}
                     </td>
@@ -722,7 +732,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
                 )}
                 <tr>
                   <td className="py-4 font-medium text-slate-900">Total</td>
-                  <td className="py-4 text-center text-sm text-slate-600">
+                  <td className="hidden sm:table-cell py-4 text-center text-sm text-slate-600 print:table-cell">
                     {totals.lowHrs}–{totals.highHrs} hrs
                   </td>
                   <td className="py-4 text-right font-semibold text-slate-900 whitespace-nowrap">
@@ -732,7 +742,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
                 {optionalPhases.length > 0 && (
                   <tr>
                     <td className="pb-2 text-sm text-slate-500">With optional phases</td>
-                    <td></td>
+                    <td className="hidden sm:table-cell print:table-cell"></td>
                     <td className="pb-2 text-right text-sm text-slate-500 whitespace-nowrap">
                       ${(totals.lowTotal + optionalPhases.reduce((a, p) => a + p.lowHrs * p.rate, 0) * (1 - discount / 100)).toLocaleString()}–${(totals.highTotal + optionalPhases.reduce((a, p) => a + p.highHrs * p.rate, 0) * (1 - discount / 100)).toLocaleString()}
                     </td>
@@ -774,7 +784,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
           {/* Upsells */}
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">Also Available</h3>
           <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
             {upsells.map((upsell, i) => {
               const Icon = iconMap[upsell.icon]
               return (
@@ -791,13 +801,13 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         {/* Website/Hosting Includes - conditional on having a monthly fee */}
         {(data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes) && (
           <>
-          <PageBreak />
+          <PageBreak hidden={isViewMode} />
           <div className="mb-12 break-before-page">
             {/* Design Includes */}
             {template.designIncludes && (
               <div className="mb-8">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Your Website Design Includes</h3>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
                   {template.designIncludes.map((item, i) => {
                     const Icon = iconMap[item.icon]
                     return (
@@ -818,7 +828,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
             {data.monthlyFee > 0 && template.hostingIncludes && (
               <div className="mb-8">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Included in Your ${data.monthlyFee}/Month Hosting Fee</h3>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
                   {template.hostingIncludes.map((item, i) => {
                     const Icon = iconMap[item.icon]
                     return (
@@ -841,7 +851,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         {/* Project Specifics - detailed feature breakdown */}
         {data.projectSpecifics && (
           <>
-          <PageBreak />
+          <PageBreak hidden={isViewMode} />
           <div className="mb-12 break-before-page">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Project Specifics</h3>
             <div className="prose prose-slate prose-sm max-w-none project-specifics">
