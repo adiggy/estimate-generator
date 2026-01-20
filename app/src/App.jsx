@@ -634,7 +634,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         </div>
 
         {/* Overview - above ToC as part of cover page */}
-        <div className="mb-8 w-[60%]">
+        <div className="mb-8 w-full md:w-[60%] print:w-[60%]">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Overview</h3>
           <EditableText
             value={data.projectDescription}
