@@ -562,7 +562,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
       {/* Document */}
       <div className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-[0.6in] print:shadow-none">
         {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-12">
+        <header className="flex flex-col items-start sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-12">
           <Logo />
           <div className="text-left sm:text-right text-sm text-slate-500">
             <p>
