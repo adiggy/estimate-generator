@@ -22,7 +22,10 @@ estimate-generator/
 │   ├── clients.json     # Client database with discount info
 │   └── proposals/       # Generated proposal JSON files
 ├── app/                 # React frontend (Vite + Tailwind)
-└── server.js            # Express API server (port 3002)
+│   └── api/             # Vercel serverless API routes
+├── scripts/
+│   └── push-proposal.js # Sync local proposals to Neon database
+└── server.js            # Express API server (port 3002, local dev only)
 ```
 
 ---
@@ -129,6 +132,19 @@ After archiving, start the server (if needed) and open the proposal:
 1. Edit any field by clicking on it
 2. Changes auto-save every second
 3. Print to PDF and **save to archive folder** as `proposal.pdf`
+
+### Step 9: Push to Production (When Ready to Share)
+
+When the proposal is ready to share with the client:
+
+```bash
+npm run push-proposal {proposal-id}
+```
+
+Then share the client view link:
+```
+https://estimate-generator-eight.vercel.app/{proposal-id}?view=1
+```
 
 ---
 
@@ -275,7 +291,7 @@ For `benefits` and `upsells`, use these Lucide icon names:
 
 ---
 
-## Running the App
+## Running the App (Local Development)
 
 ```bash
 # Start both servers
@@ -285,6 +301,81 @@ npm start
 npm run api   # Express API on port 3002
 npm run dev   # Vite dev server on port 5173/5174
 ```
+
+---
+
+## Production Deployment
+
+The app is deployed on **Vercel** with a **Neon PostgreSQL** database.
+
+**Live URL:** https://estimate-generator-eight.vercel.app
+
+### Database (Neon)
+
+Proposals, templates, and clients are stored in Neon PostgreSQL with JSONB columns:
+- `proposals` table: `id` (TEXT), `data` (JSONB), `created_at`, `updated_at`
+- `templates` table: `type` (TEXT), `data` (JSONB)
+- `clients` table: `id` (TEXT), `data` (JSONB)
+
+### Syncing Local Proposals to Production
+
+After creating/editing a proposal locally, push it to Neon:
+
+```bash
+# Push a single proposal
+npm run push-proposal 2026-01-19-project-slug
+
+# Push all proposals
+npm run push-all-proposals
+```
+
+The push script reads from `/data/proposals/` and upserts to Neon.
+
+### Environment Variables (Vercel)
+
+Required in Vercel project settings:
+- `DATABASE_URL` - Neon connection string
+- `EDIT_PIN` - PIN for edit mode authentication (currently: 6350)
+
+---
+
+## Shareable Client Links
+
+Clients can view proposals via a shareable link without needing to authenticate.
+
+### View Mode URL Format
+```
+https://estimate-generator-eight.vercel.app/{proposal-id}?view=1
+```
+
+### View Mode Features
+- Read-only (no editing)
+- "Download PDF" button (instead of Print)
+- Page break indicators hidden
+- Page numbers in table of contents hidden
+- Mobile responsive layout
+- Clickable email (mailto:) and phone (tel:) links
+
+### Edit Mode
+- Requires PIN authentication (6350)
+- Access via URL without `?view=1` parameter
+- Dashboard at root URL shows all proposals
+- Full editing capabilities
+
+### Copying the Shareable Link
+In edit mode, click "Copy link" button in the toolbar to copy the view-mode URL to clipboard.
+
+---
+
+## Mobile Responsiveness
+
+The proposal view is fully responsive:
+- **Benefits/Upsells grids:** 1 column on mobile → 2 on tablet → 3 on desktop
+- **Design/Hosting includes:** 1 column on mobile → 2 on tablet+
+- **Estimate table:** Hours column hidden on mobile, visible on sm+ screens
+- **Header:** Logo and contact info stack vertically on mobile
+- **Overview section:** Full width on mobile, 60% on larger screens
+- **All print layouts preserved** - PDF exports use desktop layout regardless of screen size
 
 ---
 
