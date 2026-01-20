@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
-import { Printer, Copy, Check, Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent } from 'lucide-react'
+import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
+import { Printer, Copy, Check, Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon } from 'lucide-react'
 
 const API_BASE = 'http://localhost:3002/api'
 
@@ -133,18 +133,48 @@ const MarkdownContent = ({ content }) => {
   return <>{elements}</>
 }
 
-const EditableText = ({ value, onChange, tag: Tag = 'span', className = '' }) => (
-  <Tag
-    contentEditable
-    suppressContentEditableWarning
-    onBlur={(e) => onChange(e.target.innerText)}
-    className={className}
-  >
-    {value}
-  </Tag>
+// Visual page break indicator for preview
+const PageBreak = () => (
+  <div className="page-break-indicator no-print relative my-8">
+    <div className="border-t-2 border-dashed border-slate-300"></div>
+    <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-slate-50 px-3 text-xs text-slate-400 uppercase tracking-wide">
+      Page Break
+    </span>
+  </div>
 )
 
-const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional }) => {
+// Table of contents component
+const TableOfContents = ({ sections }) => (
+  <div className="mb-8 p-4 bg-slate-50 rounded-lg print:bg-transparent print:p-0 print:mb-6">
+    <h4 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">In This Proposal</h4>
+    <div className="space-y-1 text-sm">
+      {sections.map((section, i) => (
+        <div key={i} className="text-slate-600">
+          <span className="text-slate-400 tabular-nums inline-block w-8">p. {section.page}</span>
+          <span>{section.title}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+)
+
+const EditableText = ({ value, onChange, tag: Tag = 'span', className = '', readOnly = false }) => {
+  if (readOnly) {
+    return <Tag className={className}>{value}</Tag>
+  }
+  return (
+    <Tag
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={(e) => onChange(e.target.innerText)}
+      className={className}
+    >
+      {value}
+    </Tag>
+  )
+}
+
+const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly = false }) => {
   const lowTotal = phase.lowHrs * phase.rate
   const highTotal = phase.highHrs * phase.rate
 
@@ -159,6 +189,7 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional }) => {
                 onChange={(val) => onUpdate(index, { ...phase, name: val })}
                 tag="span"
                 className="font-medium text-slate-900"
+                readOnly={readOnly}
               />
               {phase.optional && (
                 <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded print:bg-slate-100">Optional</span>
@@ -169,42 +200,51 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional }) => {
               onChange={(val) => onUpdate(index, { ...phase, description: val })}
               tag="p"
               className="text-slate-500 text-sm mt-1"
+              readOnly={readOnly}
             />
           </div>
-          <div className="no-print flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={() => onToggleOptional(index)}
-              className={`p-1 rounded text-xs ${phase.optional ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-              title={phase.optional ? 'Mark as required' : 'Mark as optional'}
-            >
-              Opt
-            </button>
-            <button
-              onClick={() => onDelete(index)}
-              className="p-1 rounded bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-600"
-              title="Delete phase"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          </div>
+          {!readOnly && (
+            <div className="no-print flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => onToggleOptional(index)}
+                className={`p-1 rounded text-xs ${phase.optional ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                title={phase.optional ? 'Mark as required' : 'Mark as optional'}
+              >
+                Opt
+              </button>
+              <button
+                onClick={() => onDelete(index)}
+                className="p-1 rounded bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-600"
+                title="Delete phase"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
+          )}
         </div>
       </td>
       <td className="py-3 px-4 text-center text-sm text-slate-600 align-top whitespace-nowrap">
-        <span
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={(e) => onUpdate(index, { ...phase, lowHrs: parseFloat(e.target.innerText) || 0 })}
-        >
-          {phase.lowHrs}
-        </span>
-        –
-        <span
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={(e) => onUpdate(index, { ...phase, highHrs: parseFloat(e.target.innerText) || 0 })}
-        >
-          {phase.highHrs}
-        </span>
+        {readOnly ? (
+          <>{phase.lowHrs}–{phase.highHrs}</>
+        ) : (
+          <>
+            <span
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => onUpdate(index, { ...phase, lowHrs: parseFloat(e.target.innerText) || 0 })}
+            >
+              {phase.lowHrs}
+            </span>
+            –
+            <span
+              contentEditable
+              suppressContentEditableWarning
+              onBlur={(e) => onUpdate(index, { ...phase, highHrs: parseFloat(e.target.innerText) || 0 })}
+            >
+              {phase.highHrs}
+            </span>
+          </>
+        )}
       </td>
       <td className="py-3 pl-4 text-right text-sm text-slate-600 align-top whitespace-nowrap">
         ${lowTotal.toLocaleString()}–${highTotal.toLocaleString()}
@@ -272,23 +312,30 @@ function Dashboard({ proposals, onCreate, onDelete }) {
 }
 
 // Editor Component
-function Editor({ proposal, onSave, templates }) {
+function Editor({ proposal, onSave, templates, isViewMode = false }) {
   const [data, setData] = useState(proposal)
 
   // Get benefits and upsells - proposal benefits override template for app projects
   const template = templates[data.projectType] || templates['web'] || {}
   const benefits = data.benefits || template.benefits || []
   const upsells = data.upsells || template.upsells || []
-  const [copied, setCopied] = useState(false)
+  const [copiedLink, setCopiedLink] = useState(false)
   const [saving, setSaving] = useState(false)
 
   // Set document title for PDF filename
   useEffect(() => {
     const toHyphenated = (str) => str?.replace(/\s+/g, '-') || ''
-    const parts = [data.projectName, data.clientCompany].filter(Boolean).map(toHyphenated)
+    // Extract last name (first word before any comma or last word)
+    const getLastName = (name) => {
+      if (!name) return ''
+      const commaIndex = name.indexOf(',')
+      if (commaIndex > 0) return name.slice(0, commaIndex).split(' ').pop()
+      return name.split(' ').pop()
+    }
+    const parts = [data.projectName, getLastName(data.clientName)].filter(Boolean).map(toHyphenated)
     document.title = parts.length ? 'proposal_' + parts.join('_') : 'Proposal'
     return () => { document.title = 'Estimate Generator' }
-  }, [data.projectName, data.clientCompany])
+  }, [data.projectName, data.clientName])
 
   // Auto-save on changes
   useEffect(() => {
@@ -333,10 +380,12 @@ function Editor({ proposal, onSave, templates }) {
     }))
   }, [])
 
-  const handleCopyJSON = async () => {
-    await navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const handleCopyLink = async () => {
+    const baseUrl = window.location.origin
+    const viewUrl = `${baseUrl}/${data.id}?view=1`
+    await navigator.clipboard.writeText(viewUrl)
+    setCopiedLink(true)
+    setTimeout(() => setCopiedLink(false), 2000)
   }
 
   const requiredPhases = data.phases.filter(p => !p.optional)
@@ -361,58 +410,74 @@ function Editor({ proposal, onSave, templates }) {
 
   return (
     <div className="min-h-screen bg-slate-50 py-12 print:bg-white print:py-0">
-      {/* Toolbar */}
-      <div className="no-print fixed top-4 left-4 z-50">
-        <Link
-          to="/"
-          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
-        >
-          <ArrowLeft className="w-4 h-4" /> Dashboard
-        </Link>
-      </div>
-      <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
-        {saving && <span className="text-xs text-slate-400">Saving...</span>}
-        <button
-          onClick={handleCopyJSON}
-          className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
-        >
-          {copied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
-          {copied ? 'Copied' : 'JSON'}
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded text-sm hover:bg-slate-800"
-        >
-          <Printer className="w-4 h-4" />
-          Print
-        </button>
-      </div>
+      {/* Toolbar - different for view mode vs edit mode */}
+      {isViewMode ? (
+        <div className="no-print fixed top-4 right-4 z-50">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800 shadow-lg"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="no-print fixed top-4 left-4 z-50">
+            <Link
+              to="/"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
+            >
+              <ArrowLeft className="w-4 h-4" /> Dashboard
+            </Link>
+          </div>
+          <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
+            {saving && <span className="text-xs text-slate-400">Saving...</span>}
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
+            >
+              {copiedLink ? <Check className="w-4 h-4 text-green-600" /> : <LinkIcon className="w-4 h-4" />}
+              {copiedLink ? 'Copied!' : 'Copy link'}
+            </button>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded text-sm hover:bg-slate-800"
+            >
+              <Printer className="w-4 h-4" />
+              Print
+            </button>
+          </div>
+        </>
+      )}
 
-      {/* Internal Notes (no-print) */}
-      <div className="no-print max-w-[8.5in] mx-auto mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-amber-700 uppercase">Internal Notes</span>
-            {discount > 0 && (
-              <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1">
-                <Percent className="w-3 h-3" /> {discount}% discount
+      {/* Internal Notes (no-print, edit mode only) */}
+      {!isViewMode && (
+        <div className="no-print max-w-[8.5in] mx-auto mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-amber-700 uppercase">Internal Notes</span>
+              {discount > 0 && (
+                <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded flex items-center gap-1">
+                  <Percent className="w-3 h-3" /> {discount}% discount
+                </span>
+              )}
+            </div>
+            {data.archivePath && (
+              <span className="text-xs text-amber-600 font-mono">
+                Save PDF to: {data.archivePath}/proposal.pdf
               </span>
             )}
           </div>
-          {data.archivePath && (
-            <span className="text-xs text-amber-600 font-mono">
-              Save PDF to: {data.archivePath}/proposal.pdf
-            </span>
-          )}
+          <textarea
+            value={data.internalNotes || ''}
+            onChange={(e) => updateField('internalNotes', e.target.value)}
+            placeholder="Add internal notes here (won't print)..."
+            className="w-full mt-2 text-sm text-amber-900 bg-transparent border-none resize-none focus:outline-none"
+            rows={2}
+          />
         </div>
-        <textarea
-          value={data.internalNotes || ''}
-          onChange={(e) => updateField('internalNotes', e.target.value)}
-          placeholder="Add internal notes here (won't print)..."
-          className="w-full mt-2 text-sm text-amber-900 bg-transparent border-none resize-none focus:outline-none"
-          rows={2}
-        />
-      </div>
+      )}
 
       {/* Document */}
       <div className="print-page mx-auto bg-white shadow-sm p-[0.6in] print:shadow-none">
@@ -426,60 +491,105 @@ function Editor({ proposal, onSave, templates }) {
         </header>
 
         {/* Title Block */}
-        <div className="mb-10 flex justify-between items-start">
-          <div>
+        <div className="mb-10">
+          <EditableText
+            value={data.projectName}
+            onChange={(val) => updateField('projectName', val)}
+            tag="h1"
+            className="text-3xl font-semibold text-slate-900 tracking-tight"
+            readOnly={isViewMode}
+          />
+          <div className="flex gap-4 mt-2 text-sm text-slate-400">
             <EditableText
-              value={data.projectName}
-              onChange={(val) => updateField('projectName', val)}
-              tag="h1"
-              className="text-3xl font-semibold text-slate-900 tracking-tight"
+              value={data.date}
+              onChange={(val) => updateField('date', val)}
+              tag="span"
+              readOnly={isViewMode}
             />
-            <div className="flex gap-4 mt-2 text-sm text-slate-400">
-              <EditableText
-                value={data.date}
-                onChange={(val) => updateField('date', val)}
-                tag="span"
-              />
-              {data.expirationDate && (
-                <span className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
-                </span>
-              )}
-            </div>
+            {data.expirationDate && (
+              <span className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
+              </span>
+            )}
           </div>
-          <div className="text-right">
-            <p className="text-sm text-slate-400 mb-1">Proposal for</p>
+
+          {/* Proposal For - Client Details */}
+          <div className="mt-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-2">Proposal For</p>
             <EditableText
               value={data.clientName}
               onChange={(val) => updateField('clientName', val)}
               tag="p"
               className="text-lg text-slate-900"
+              readOnly={isViewMode}
             />
+            {data.clientRole && (
+              <EditableText
+                value={data.clientRole}
+                onChange={(val) => updateField('clientRole', val)}
+                tag="p"
+                className="text-slate-600"
+                readOnly={isViewMode}
+              />
+            )}
+            {data.clientEmail && (
+              <EditableText
+                value={data.clientEmail}
+                onChange={(val) => updateField('clientEmail', val)}
+                tag="p"
+                className="text-slate-500 text-sm"
+                readOnly={isViewMode}
+              />
+            )}
             {data.clientCompany && (
               <EditableText
                 value={data.clientCompany}
                 onChange={(val) => updateField('clientCompany', val)}
                 tag="p"
-                className="text-slate-500"
+                className="text-slate-500 text-sm mt-1"
+                readOnly={isViewMode}
               />
             )}
           </div>
         </div>
 
-        {/* Overview */}
-        <div className="mb-12">
+        {/* Overview - above ToC as part of cover page */}
+        <div className="mb-8 w-[60%]">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Overview</h3>
           <EditableText
             value={data.projectDescription}
             onChange={(val) => updateField('projectDescription', val)}
             tag="p"
             className="text-slate-600 leading-relaxed"
+            readOnly={isViewMode}
           />
         </div>
 
-        {/* Benefits Grid */}
-        <div className="mb-12">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">What's Included</h3>
+        {/* Table of Contents */}
+        <TableOfContents sections={(() => {
+          const sections = [
+            { title: "What's Included", page: 2 },
+            { title: 'Estimate', page: 3 },
+            { title: 'Timeline & Also Available', page: 4 },
+          ]
+          let nextPage = 5
+          if ((data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes)) {
+            sections.push({ title: 'Design & Hosting Includes', page: nextPage++ })
+          }
+          if (data.projectSpecifics) {
+            sections.push({ title: 'Project Specifics', page: nextPage++ })
+          }
+          if (data.exclusions) {
+            sections.push({ title: 'What Is Not Included', page: nextPage })
+          }
+          return sections
+        })()} />
+
+        {/* Benefits Grid - Page 2 */}
+        <PageBreak />
+        <div className="mb-12 break-before-page">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">What's Included</h3>
+          <p className="text-sm text-slate-400 mb-4">Here's what you'll get with this project.</p>
           <div className="benefits-grid grid grid-cols-3 gap-6">
             {benefits.map((benefit, i) => {
               const Icon = iconMap[benefit.icon]
@@ -497,7 +607,8 @@ function Editor({ proposal, onSave, templates }) {
         </div>
 
         {/* Estimate - Page 2 */}
-        <div className="mb-12 break-before-page pt-12">
+        <PageBreak />
+        <div className="mb-12 break-before-page">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Estimate</h3>
           <table className="w-full">
             <thead>
@@ -509,7 +620,7 @@ function Editor({ proposal, onSave, templates }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {data.phases.map((phase, i) => (
-                <LineItem key={i} phase={phase} index={i} onUpdate={updatePhase} onDelete={deletePhase} onToggleOptional={toggleOptional} />
+                <LineItem key={i} phase={phase} index={i} onUpdate={updatePhase} onDelete={deletePhase} onToggleOptional={toggleOptional} readOnly={isViewMode} />
               ))}
             </tbody>
           </table>
@@ -562,12 +673,14 @@ function Editor({ proposal, onSave, templates }) {
             <div className="text-sm text-slate-400">
               <p>Rate: ${data.phases[0]?.rate}/hr</p>
             </div>
-            <button
-              onClick={addPhase}
-              className="no-print flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
-            >
-              <Plus className="w-4 h-4" /> Add phase
-            </button>
+            {!isViewMode && (
+              <button
+                onClick={addPhase}
+                className="no-print flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700"
+              >
+                <Plus className="w-4 h-4" /> Add phase
+              </button>
+            )}
           </div>
         </div>
 
@@ -581,6 +694,7 @@ function Editor({ proposal, onSave, templates }) {
               onChange={(val) => updateField('estimatedTimeline', val)}
               tag="p"
               className="text-slate-600"
+              readOnly={isViewMode}
             />
           </div>
 
@@ -603,7 +717,9 @@ function Editor({ proposal, onSave, templates }) {
 
         {/* Website/Hosting Includes - conditional on having a monthly fee */}
         {(data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes) && (
-          <div className="mb-12 break-before-page pt-12">
+          <>
+          <PageBreak />
+          <div className="mb-12 break-before-page">
             {/* Design Includes */}
             {template.designIncludes && (
               <div className="mb-8">
@@ -646,16 +762,20 @@ function Editor({ proposal, onSave, templates }) {
               </div>
             )}
           </div>
+          </>
         )}
 
         {/* Project Specifics - detailed feature breakdown */}
         {data.projectSpecifics && (
-          <div className="mb-12 break-before-page pt-12">
+          <>
+          <PageBreak />
+          <div className="mb-12 break-before-page">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Project Specifics</h3>
             <div className="prose prose-slate prose-sm max-w-none project-specifics">
               <MarkdownContent content={data.projectSpecifics} />
             </div>
           </div>
+          </>
         )}
 
         {/* Exclusions - what's not included */}
@@ -674,10 +794,12 @@ function Editor({ proposal, onSave, templates }) {
         </footer>
       </div>
 
-      {/* Instructions */}
-      <p className="no-print text-center text-sm text-slate-400 mt-8">
-        Click any text to edit · Auto-saves every second
-      </p>
+      {/* Instructions (edit mode only) */}
+      {!isViewMode && (
+        <p className="no-print text-center text-sm text-slate-400 mt-8">
+          Click any text to edit · Auto-saves every second
+        </p>
+      )}
     </div>
   )
 }
@@ -762,6 +884,8 @@ function DashboardPage() {
 // Editor Page (loads proposal from URL)
 function EditorPage() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const isViewMode = searchParams.get('view') === '1'
   const [proposal, setProposal] = useState(null)
   const [templates, setTemplates] = useState({})
   const [loading, setLoading] = useState(true)
@@ -785,6 +909,8 @@ function EditorPage() {
   }, [id])
 
   const saveProposal = async (updatedProposal) => {
+    // Don't save in view mode
+    if (isViewMode) return
     await fetch(`${API_BASE}/proposals/${updatedProposal.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -808,7 +934,7 @@ function EditorPage() {
     )
   }
 
-  return <Editor proposal={proposal} onSave={saveProposal} templates={templates} />
+  return <Editor proposal={proposal} onSave={saveProposal} templates={templates} isViewMode={isViewMode} />
 }
 
 // Main App with Router

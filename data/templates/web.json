@@ -2,6 +2,19 @@
   "type": "web",
   "label": "Website / Web App",
   "monthlyFee": 39,
+  "designIncludes": [
+    { "icon": "Palette", "title": "100% Custom Design", "description": "No templates—your site is designed and developed from scratch to fit your unique project needs, goals, and style." },
+    { "icon": "Layout", "title": "Modern Web Standards", "description": "Built with current CSS and HTML standards for smooth performance and consistent rendering across all browsers." },
+    { "icon": "Smartphone", "title": "Fully Responsive", "description": "Layouts automatically adapt to any screen size—desktops, tablets, and phones—future-proofed for devices yet to come." },
+    { "icon": "BarChart3", "title": "Traffic Analytics", "description": "See how many visitors come to your site, how long they stay, where they click, and what devices they use." }
+  ],
+  "hostingIncludes": [
+    { "icon": "PenTool", "title": "Easy-to-Use CMS", "description": "Update content directly without touching code. No complicated backend systems—just click, edit, and publish." },
+    { "icon": "RefreshCw", "title": "Content Version History", "description": "Every edit is saved with 90 days of revision history. Accidentally delete something? Restore it with a few clicks." },
+    { "icon": "Zap", "title": "Blazing Fast Hosting", "description": "Hosted on 100+ datacenter servers worldwide via Fastly and Amazon CloudFront with 99.9% uptime." },
+    { "icon": "Shield", "title": "SSL Security", "description": "Keeps your site secure and encrypted. Google also rewards SSL-enabled sites with better search rankings." },
+    { "icon": "Megaphone", "title": "Troubleshooting & Fixes", "description": "If something on your site malfunctions, it gets fixed at no extra charge." }
+  ],
   "benefits": [
     { "icon": "Palette", "title": "Custom Design", "description": "100% unique to your needs, vision and style." },
     { "icon": "Layout", "title": "Modern Code", "description": "CSS3/HTML5 compliance for smooth rendering." },

@@ -6,21 +6,57 @@
   "projectType": "app",
   "archivePath": "archive/frerichs-opioid-hub",
   "clientId": "frerichs",
-  "clientName": "Leah Frerichs",
+  "clientName": "Leah Frerichs, PhD",
+  "clientRole": "Associate Professor",
+  "clientEmail": "leahf@email.unc.edu",
+  "clientCompany": "UNC Department of Health Policy and Management",
   "projectName": "Opioid Settlement Decision Hub",
-  "date": "January 8, 2026",
-  "expirationDate": "February 8, 2026",
+  "date": "January 20, 2026",
+  "expirationDate": "February 20, 2026",
   "projectDescription": "The goal is to move from static planning to an active, digital decision-support engine. This platform will empower North Carolina county leaders to transform complex opioid settlement data into actionable, research-backed funding strategies.",
+  "estimatedTimeline": "Estimated 12–16 weeks from project kickoff. Actual timeline depends on project start date and the efficiency of feedback rounds—active client involvement helps keep things moving smoothly.",
   "internalNotes": "Client referred by UNC. Budget is grant-funded so timeline flexibility is good. Key deadline is March 31 pilot.",
   "benefits": [
-    { "icon": "Layout", "title": "Guided Decision Path", "description": "A 5-step 'choose your own adventure' framework walks users through strategic planning at their own pace." },
-    { "icon": "BarChart3", "title": "Research-Backed Scoring", "description": "Best-Worst Scaling and validated formulas convert qualitative priorities into actionable numerical rankings." },
-    { "icon": "RefreshCw", "title": "Save & Resume Progress", "description": "Unique links let teams save their work and return to their specific project instance anytime." },
-    { "icon": "Zap", "title": "Scenario Forking", "description": "Create alternate versions of a project to test different decision paths without losing original work." },
-    { "icon": "PenTool", "title": "Dynamic PDF Reports", "description": "Auto-generated briefs include only the sections each user completed, with integrated data visualizations." },
-    { "icon": "Shield", "title": "Secure Study Access", "description": "Study ID authentication ensures data privacy and enables tracking of specific research cohorts." },
-    { "icon": "Megaphone", "title": "Admin Insights Portal", "description": "Password-protected dashboard for the research team to monitor engagement and usage patterns." },
-    { "icon": "Palette", "title": "Brand Cohesion Kit", "description": "Video assets, document templates, and presentation masters keep all project materials visually aligned." }
+    {
+      "icon": "Layout",
+      "title": "Guided Decision Path",
+      "description": "A 5-step 'choose your own adventure' framework walks users through strategic planning at their own pace."
+    },
+    {
+      "icon": "BarChart3",
+      "title": "Research-Backed Scoring",
+      "description": "Best-Worst Scaling and validated formulas convert qualitative priorities into actionable numerical rankings."
+    },
+    {
+      "icon": "RefreshCw",
+      "title": "Save & Resume Progress",
+      "description": "Unique links let teams save their work and return to their specific project instance anytime."
+    },
+    {
+      "icon": "Zap",
+      "title": "Scenario Forking",
+      "description": "Create alternate versions of a project to test different decision paths without losing original work."
+    },
+    {
+      "icon": "PenTool",
+      "title": "Dynamic PDF Reports",
+      "description": "Auto-generated briefs include only the sections each user completed, with integrated data visualizations."
+    },
+    {
+      "icon": "Shield",
+      "title": "Secure Study Access",
+      "description": "Study ID authentication ensures data privacy and enables tracking of specific research cohorts."
+    },
+    {
+      "icon": "Megaphone",
+      "title": "Admin Insights Portal",
+      "description": "Password-protected dashboard for the research team to monitor engagement and usage patterns."
+    },
+    {
+      "icon": "Palette",
+      "title": "Brand Cohesion Kit",
+      "description": "Video assets, document templates, and presentation masters keep all project materials visually aligned."
+    }
   ],
   "phases": [
     {

@@ -149,7 +149,9 @@ After archiving, start the server (if needed) and open the proposal:
 
   "clientId": "client-slug",
   "clientName": "Client Full Name",
-  "clientCompany": "Organization Name",  // Optional, shown after client name
+  "clientRole": "Job Title",           // Optional
+  "clientEmail": "email@example.com",  // Optional
+  "clientCompany": "Organization Name", // Optional
   "projectName": "Project Title",
   "date": "January 19, 2026",
   "expirationDate": "February 19, 2026",
@@ -298,7 +300,7 @@ When asked to update a proposal:
 
 ## PDF Export & Print Layout
 
-**PDF Filename:** Automatically set to `proposal_Project-Name_Client-Org.pdf`
+**PDF Filename:** Automatically set to `proposal_Project-Name_Client-Last-Name.pdf`
 
 **Page Structure:**
 - Page 1: Header, title block, overview, What's Included (benefits grid)
