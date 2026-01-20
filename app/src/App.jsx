@@ -1,8 +1,19 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { Printer, Copy, Check, Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon } from 'lucide-react'
+import { Printer, Copy, Check, Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon, Lock } from 'lucide-react'
 
-const API_BASE = 'http://localhost:3002/api'
+// Use relative path for Vercel, localhost for dev
+const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api' : '/api'
+
+// Check if user is authenticated (PIN verified)
+const isAuthenticated = () => localStorage.getItem('estimateAuth') === 'true'
+const setAuthenticated = (value) => {
+  if (value) {
+    localStorage.setItem('estimateAuth', 'true')
+  } else {
+    localStorage.removeItem('estimateAuth')
+  }
+}
 
 const Logo = () => (
   <svg viewBox="0 0 508.8 94.3" className="h-10 w-auto">
@@ -62,6 +73,68 @@ const Logo = () => (
 )
 
 const iconMap = { Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool }
+
+// PIN Entry component for edit mode authentication
+const PinEntry = ({ onSuccess }) => {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      const res = await fetch(`${API_BASE}/auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin })
+      })
+
+      if (res.ok) {
+        setAuthenticated(true)
+        onSuccess()
+      } else {
+        setError('Invalid PIN')
+        setPin('')
+      }
+    } catch (err) {
+      setError('Connection error')
+    }
+    setLoading(false)
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 w-80">
+        <div className="flex items-center gap-3 mb-6">
+          <Lock className="w-5 h-5 text-slate-400" />
+          <h2 className="text-lg font-medium text-slate-900">Enter PIN to Edit</h2>
+        </div>
+        <input
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={4}
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+          placeholder="••••"
+          className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400"
+          autoFocus
+        />
+        {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
+        <button
+          type="submit"
+          disabled={pin.length < 4 || loading}
+          className="w-full mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? 'Checking...' : 'Unlock'}
+        </button>
+      </form>
+    </div>
+  )
+}
 
 // Simple markdown renderer for project specifics
 const MarkdownContent = ({ content }) => {
@@ -809,9 +882,11 @@ function DashboardPage() {
   const [proposals, setProposals] = useState([])
   const [templates, setTemplates] = useState({})
   const [loading, setLoading] = useState(true)
+  const [needsAuth, setNeedsAuth] = useState(!isAuthenticated())
   const navigate = useNavigate()
 
   useEffect(() => {
+    if (needsAuth) return
     Promise.all([
       fetch(`${API_BASE}/proposals`).then(r => r.json()),
       fetch(`${API_BASE}/templates`).then(r => r.json())
@@ -870,6 +945,11 @@ function DashboardPage() {
     }
   }
 
+  // Show PIN entry if not authenticated
+  if (needsAuth) {
+    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -889,6 +969,23 @@ function EditorPage() {
   const [proposal, setProposal] = useState(null)
   const [templates, setTemplates] = useState({})
   const [loading, setLoading] = useState(true)
+  const [needsAuth, setNeedsAuth] = useState(false)
+
+  // Add noindex meta tag for proposal pages (don't index client proposals)
+  useEffect(() => {
+    const meta = document.createElement('meta')
+    meta.name = 'robots'
+    meta.content = 'noindex, nofollow'
+    document.head.appendChild(meta)
+    return () => meta.remove()
+  }, [])
+
+  // Check auth for edit mode
+  useEffect(() => {
+    if (!isViewMode && !isAuthenticated()) {
+      setNeedsAuth(true)
+    }
+  }, [isViewMode])
 
   useEffect(() => {
     Promise.all([
@@ -909,8 +1006,8 @@ function EditorPage() {
   }, [id])
 
   const saveProposal = async (updatedProposal) => {
-    // Don't save in view mode
-    if (isViewMode) return
+    // Don't save in view mode or if not authenticated
+    if (isViewMode || !isAuthenticated()) return
     await fetch(`${API_BASE}/proposals/${updatedProposal.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -932,6 +1029,11 @@ function EditorPage() {
         <p className="text-slate-400">Proposal not found</p>
       </div>
     )
+  }
+
+  // Show PIN entry if trying to edit without auth
+  if (needsAuth) {
+    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
   }
 
   return <Editor proposal={proposal} onSave={saveProposal} templates={templates} isViewMode={isViewMode} />
