@@ -12,7 +12,7 @@ module.exports = async function handler(req, res) {
   try {
     if (req.method === 'GET') {
       const rows = await sql`SELECT data FROM clients`
-      const clients = rows.map(row => row.data)
+      const clients = rows.map(row => typeof row.data === 'string' ? JSON.parse(row.data) : row.data)
       return res.status(200).json(clients)
     }
 

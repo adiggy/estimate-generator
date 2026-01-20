@@ -18,14 +18,18 @@ module.exports = async function handler(req, res) {
         FROM proposals
         ORDER BY updated_at DESC
       `
-      const proposals = rows.map(row => ({
-        id: row.id,
-        clientName: row.data.clientName,
-        projectName: row.data.projectName,
-        date: row.data.date,
-        status: row.data.status,
-        updatedAt: row.data.updatedAt
-      }))
+      const proposals = rows.map(row => {
+        // Handle data whether it's already parsed or a string
+        const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
+        return {
+          id: row.id,
+          clientName: data.clientName,
+          projectName: data.projectName,
+          date: data.date,
+          status: data.status,
+          updatedAt: data.updatedAt
+        }
+      })
       return res.status(200).json(proposals)
     }
 

@@ -19,7 +19,8 @@ module.exports = async function handler(req, res) {
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Client not found' })
       }
-      return res.status(200).json(rows[0].data)
+      const data = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data
+      return res.status(200).json(data)
     }
 
     return res.status(405).json({ error: 'Method not allowed' })
