@@ -1,4 +1,4 @@
-const { sql } = require('../_db.js')
+const { neon } = require('@neondatabase/serverless')
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*')
@@ -9,6 +9,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).end()
   }
 
+  const sql = neon(process.env.DATABASE_URL)
   const { id } = req.query
 
   try {
@@ -26,6 +27,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (err) {
     console.error('Client API error:', err)
-    return res.status(500).json({ error: 'Database error' })
+    return res.status(500).json({ error: 'Database error', details: err.message })
   }
 }

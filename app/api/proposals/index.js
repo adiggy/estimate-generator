@@ -1,4 +1,4 @@
-const { sql } = require('../_db.js')
+const { neon } = require('@neondatabase/serverless')
 
 module.exports = async function handler(req, res) {
   // Set CORS headers
@@ -10,6 +10,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).end()
   }
 
+  const sql = neon(process.env.DATABASE_URL)
+
   try {
     if (req.method === 'GET') {
       // Get all proposals (metadata only for dashboard)
@@ -19,7 +21,6 @@ module.exports = async function handler(req, res) {
         ORDER BY updated_at DESC
       `
       const proposals = rows.map(row => {
-        // Handle data whether it's already parsed or a string
         const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data
         return {
           id: row.id,
@@ -37,7 +38,6 @@ module.exports = async function handler(req, res) {
       const proposal = req.body
       const today = new Date().toISOString().split('T')[0]
 
-      // Generate ID if not provided
       if (!proposal.id) {
         const slug = proposal.projectName
           .toLowerCase()
@@ -65,6 +65,6 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' })
   } catch (err) {
     console.error('Proposals API error:', err)
-    return res.status(500).json({ error: 'Database error' })
+    return res.status(500).json({ error: 'Database error', details: err.message })
   }
 }
