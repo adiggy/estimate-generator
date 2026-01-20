@@ -1,9 +1,9 @@
 {
   "id": "2026-01-08-frerichs-opioid-hub",
   "createdAt": "2026-01-08",
-  "updatedAt": "2026-01-19",
+  "updatedAt": "2026-01-20",
   "status": "draft",
-  "projectType": "web",
+  "projectType": "app",
   "archivePath": "archive/frerichs-opioid-hub",
   "clientId": "frerichs",
   "clientName": "Leah Frerichs",
@@ -12,6 +12,16 @@
   "expirationDate": "February 8, 2026",
   "projectDescription": "The goal is to move from static planning to an active, digital decision-support engine. This platform will empower North Carolina county leaders to transform complex opioid settlement data into actionable, research-backed funding strategies.",
   "internalNotes": "Client referred by UNC. Budget is grant-funded so timeline flexibility is good. Key deadline is March 31 pilot.",
+  "benefits": [
+    { "icon": "Layout", "title": "Guided Decision Path", "description": "A 5-step 'choose your own adventure' framework walks users through strategic planning at their own pace." },
+    { "icon": "BarChart3", "title": "Research-Backed Scoring", "description": "Best-Worst Scaling and validated formulas convert qualitative priorities into actionable numerical rankings." },
+    { "icon": "RefreshCw", "title": "Save & Resume Progress", "description": "Unique links let teams save their work and return to their specific project instance anytime." },
+    { "icon": "Zap", "title": "Scenario Forking", "description": "Create alternate versions of a project to test different decision paths without losing original work." },
+    { "icon": "PenTool", "title": "Dynamic PDF Reports", "description": "Auto-generated briefs include only the sections each user completed, with integrated data visualizations." },
+    { "icon": "Shield", "title": "Secure Study Access", "description": "Study ID authentication ensures data privacy and enables tracking of specific research cohorts." },
+    { "icon": "Megaphone", "title": "Admin Insights Portal", "description": "Password-protected dashboard for the research team to monitor engagement and usage patterns." },
+    { "icon": "Palette", "title": "Brand Cohesion Kit", "description": "Video assets, document templates, and presentation masters keep all project materials visually aligned." }
+  ],
   "phases": [
     {
       "name": "Brand Identity & Technical Discovery",
@@ -52,8 +62,18 @@
       "highHrs": 40,
       "rate": 120,
       "optional": false
+    },
+    {
+      "name": "Visual Asset & Cohesion Kit",
+      "description": "Video title cards, lower-thirds, and end screens. Branded document templates for offline worksheets. Presentation master for webinars. Centralized asset library with fonts, colors, and icons.",
+      "lowHrs": 12,
+      "highHrs": 20,
+      "rate": 120,
+      "optional": false
     }
   ],
+  "projectSpecifics": "The goal is to move from static planning to an active, digital decision-support engine. This platform will empower North Carolina county leaders to transform complex opioid settlement data into actionable, research-backed funding strategies. By using a custom JavaScript-driven front end and a secure database stack, we will provide a seamless \"choose your own adventure\" experience that results in dynamic, easy-to-use reporting.\n\nHere is an overview of all the features included in this estimate:\n\n## User Experience & Interaction\n\n- **\"Choose Your Own Adventure\" Dashboard:** A central hub featuring five interactive cards that allow users to jump directly to specific strategic steps based on their immediate needs.\n- **Contextual Homepage:** A landing page providing project history, problem/solution language, and embedded webinar videos to orient users before they begin the process.\n- **Progress Persistence:** A \"unique link\" system that allows teams to save their progress and return to their specific project instance at a later time.\n- **Forking Capability:** The ability for users to create a new, separate instance based on an existing project to test different decision-making scenarios.\n\n## The Strategic Planning Engine (5-Step Path)\n\n- **Step 1: Digital \"Rich Picture\" Workspace:** Interactive prompts and text entry fields for defining county-specific problems and assessing the impact on children and youth.\n- **Step 2: Values & Priorities Calculator:** A tool that uses \"Best-Worst Scaling\" and research-validated formulas to convert qualitative values into numerical weights.\n- **Step 3: Strategy Selector & Logic Engine:** Includes Automated Scoring (a calculator that ranks Exhibit A and B strategies against the county's weighted criteria), Impact-Gap Canvas (a digital canvas to identify which strategies most effectively address specific prioritized problems), and Uncertainty Visualizer (real-time data visualizations such as range bars or confidence percentages to show the impact of scoring uncertainty).\n- **Step 4: Implementation Design Guides:** Digital versions of the \"Design Parameters\" and reflection prompts to help teams modify strategies to better benefit children and families.\n- **Step 5: Action Partner Rubric:** An interactive scoring tool to assess potential implementation partners based on project-specific goals and criteria.\n\n## Reporting & Administrative Tools\n\n- **Dynamic PDF Reporting:** An automated system that generates a \"semi-polished\" downloadable PDF brief, selectively including only the sections and tools a user actually interacted with.\n- **Secure Authentication:** A login system using Study IDs and passwords to ensure data privacy and track specific research cohorts.\n- **Admin Engagement Portal:** A password-protected dashboard for the research team to monitor aggregate and individual usage data, including engagement reports.\n- **\"Spot-Edit\" Content Management System:** A light CMS that allows the project team to update tutorial videos and site text without developer intervention, while maintaining research-validated logic and data integrity within the secure database.\n\n## Visual Asset & Cohesion Kit\n\n- **Video Asset Pack:** Custom title cards, lower-third graphics for speaker names, and end-screen templates for your short tutorial videos.\n- **Document & Template Styling:** Branded layouts for the \"adapted templates\" mentioned in Steps 1-5, ensuring that offline worksheets match the digital tool.\n- **Presentation Master:** A foundational slide deck template (PowerPoint/Google Slides) for webinars and board presentations.\n- **Project Asset Library:** A centralized folder of approved fonts, color hex codes, and project-specific icons for internal use.",
+  "exclusions": "- Content creation and copyediting\n- Additional features or functionality not included here (can be added later as a separate project)\n- Hosting and domain fees: You will be paying me directly for hosting & CMS fees, but you will need to still pay for your annual domain fees to keep your website's URL current (e.g., \"www.opioid-settlement-decision-hub.com\")\n- Off-page SEO services (On-page and technical SEO are included)\n\n**Clarification: On-page vs. off-page SEO:**\n\n- **On-page & technical SEO (included):** Keyword optimization, meta titles, descriptions, header tags (H1, H2, H3, etc), image optimization, page speed optimization, internal linking, URL structure, mobile responsiveness, XML sitemaps, indexibility, core web vitals, and SSL setup.\n- **Off-page SEO (not a service I offer):** Backlink building, social media marketing, guest blogging, influencer marketing, brand mentions, forum/community participation, and press releases/media coverage.",
   "discountPercent": 0,
   "monthlyFee": 39,
   "paymentTerms": {

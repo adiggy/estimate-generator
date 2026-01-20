@@ -1,7 +1,20 @@
 {
   "type": "app",
   "label": "Web Application / Online Tool",
-  "monthlyFee": 0,
+  "monthlyFee": 39,
+  "designIncludes": [
+    { "icon": "Palette", "title": "Custom Handcrafted Design", "description": "Your website won't be based on a template. Your design will be 100% unique to your needs, vision and style—from scratch and fresh baked." },
+    { "icon": "Layout", "title": "100% CSS3/HTML5 Compliance", "description": "The underlying structure is programmed in the most up-to-date languages to keep it running smoothly and rendering great in all browsers." },
+    { "icon": "Smartphone", "title": "Full Responsiveness", "description": "Multiple page layouts automatically adjust based on screen size—desktops, tablets, and smartphones—future-proofed for screens yet to be developed." },
+    { "icon": "BarChart3", "title": "Traffic Analytics", "description": "See how many visitors come to your site, how long they stay, where they click, what device they use, and so much more." }
+  ],
+  "hostingIncludes": [
+    { "icon": "PenTool", "title": "Easy-to-Use CMS", "description": "Update any content sitewide directly on the page in a WYSIWYG way—no complicated backend systems like WordPress." },
+    { "icon": "RefreshCw", "title": "Automated Backups & Updates", "description": "Your site is backed up daily/weekly/monthly. Unlike open source alternatives, software and plugins update automatically to stay safe from hackers." },
+    { "icon": "Zap", "title": "Blazing Fast Hosting", "description": "Hosted on 100+ datacenter servers worldwide via Fastly and Amazon CloudFront with 99.9% uptime—loads quick anywhere in the world." },
+    { "icon": "Shield", "title": "SSL Security", "description": "Keeps your website secure from hackers and bots. Google also gives you a ranking boost for having SSL enabled." },
+    { "icon": "Megaphone", "title": "Troubleshooting & Fixes", "description": "If you see something on your website malfunctioning, it gets fixed at no extra charge." }
+  ],
   "benefits": [
     { "icon": "Zap", "title": "Workflow Automation", "description": "Eliminates repetitive manual tasks with intelligent processing." },
     { "icon": "RefreshCw", "title": "Data Validation", "description": "Catches errors before they cause problems downstream." },
@@ -15,8 +28,7 @@
   ],
   "upsells": [
     { "icon": "RefreshCw", "title": "Ongoing Maintenance", "description": "Updates, bug fixes, and feature enhancements over time." },
-    { "icon": "Zap", "title": "Priority Support", "description": "Dedicated support channel with faster response times and scheduled check-ins." },
-    { "icon": "Layout", "title": "API Access", "description": "Programmatic access for integrations with other systems and custom workflows." }
+    { "icon": "Zap", "title": "Priority Support", "description": "Dedicated support channel with faster response times and scheduled check-ins." }
   ],
   "defaultPhases": [
     {

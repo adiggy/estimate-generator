@@ -63,6 +63,76 @@ const Logo = () => (
 
 const iconMap = { Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool }
 
+// Simple markdown renderer for project specifics
+const MarkdownContent = ({ content }) => {
+  if (!content) return null
+
+  const lines = content.split('\n')
+  const elements = []
+  let currentList = []
+  let listKey = 0
+
+  const flushList = () => {
+    if (currentList.length > 0) {
+      elements.push(
+        <ul key={`list-${listKey++}`} className="list-disc list-outside ml-5 mb-4 space-y-1">
+          {currentList.map((item, i) => (
+            <li key={i} className="text-slate-600" dangerouslySetInnerHTML={{ __html: parseLine(item) }} />
+          ))}
+        </ul>
+      )
+      currentList = []
+    }
+  }
+
+  const parseLine = (text) => {
+    // Bold: **text** or __text__
+    text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-900 font-semibold">$1</strong>')
+    text = text.replace(/__(.+?)__/g, '<strong class="text-slate-900 font-semibold">$1</strong>')
+    return text
+  }
+
+  lines.forEach((line, i) => {
+    const trimmed = line.trim()
+
+    // Empty line
+    if (!trimmed) {
+      flushList()
+      return
+    }
+
+    // Headers
+    if (trimmed.startsWith('### ')) {
+      flushList()
+      elements.push(<h5 key={i} className="font-semibold text-slate-800 mt-6 mb-2">{trimmed.slice(4)}</h5>)
+      return
+    }
+    if (trimmed.startsWith('## ')) {
+      flushList()
+      elements.push(<h4 key={i} className="font-bold text-slate-900 mt-6 mb-3 text-base">{trimmed.slice(3)}</h4>)
+      return
+    }
+    if (trimmed.startsWith('# ')) {
+      flushList()
+      elements.push(<h3 key={i} className="font-bold text-slate-900 mt-6 mb-3 text-lg">{trimmed.slice(2)}</h3>)
+      return
+    }
+
+    // Bullet points
+    if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
+      currentList.push(trimmed.slice(2))
+      return
+    }
+
+    // Regular paragraph
+    flushList()
+    elements.push(<p key={i} className="text-slate-600 mb-3" dangerouslySetInnerHTML={{ __html: parseLine(trimmed) }} />)
+  })
+
+  flushList()
+  return <>{elements}</>
+}
+
 const EditableText = ({ value, onChange, tag: Tag = 'span', className = '' }) => (
   <Tag
     contentEditable
@@ -205,10 +275,10 @@ function Dashboard({ proposals, onCreate, onDelete }) {
 function Editor({ proposal, onSave, templates }) {
   const [data, setData] = useState(proposal)
 
-  // Get benefits and upsells from template based on projectType
+  // Get benefits and upsells - proposal benefits override template for app projects
   const template = templates[data.projectType] || templates['web'] || {}
-  const benefits = template.benefits || data.benefits || []
-  const upsells = template.upsells || data.upsells || []
+  const benefits = data.benefits || template.benefits || []
+  const upsells = data.upsells || template.upsells || []
   const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -530,6 +600,73 @@ function Editor({ proposal, onSave, templates }) {
             })}
           </div>
         </div>
+
+        {/* Website/Hosting Includes - conditional on having a monthly fee */}
+        {(data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes) && (
+          <div className="mb-12 break-before-page pt-12">
+            {/* Design Includes */}
+            {template.designIncludes && (
+              <div className="mb-8">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Your Website Design Includes</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  {template.designIncludes.map((item, i) => {
+                    const Icon = iconMap[item.icon]
+                    return (
+                      <div key={i} className="flex gap-3">
+                        {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
+                        <div>
+                          <div className="font-medium text-slate-900">{item.title}</div>
+                          <div className="text-slate-500 text-sm">{item.description}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Hosting Includes */}
+            {data.monthlyFee > 0 && template.hostingIncludes && (
+              <div className="mb-8">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Included in Your ${data.monthlyFee}/Month Hosting Fee</h3>
+                <div className="grid grid-cols-2 gap-6">
+                  {template.hostingIncludes.map((item, i) => {
+                    const Icon = iconMap[item.icon]
+                    return (
+                      <div key={i} className="flex gap-3">
+                        {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
+                        <div>
+                          <div className="font-medium text-slate-900">{item.title}</div>
+                          <div className="text-slate-500 text-sm">{item.description}</div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Project Specifics - detailed feature breakdown */}
+        {data.projectSpecifics && (
+          <div className="mb-12 break-before-page pt-12">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Project Specifics</h3>
+            <div className="prose prose-slate prose-sm max-w-none project-specifics">
+              <MarkdownContent content={data.projectSpecifics} />
+            </div>
+          </div>
+        )}
+
+        {/* Exclusions - what's not included */}
+        {data.exclusions && (
+          <div className="mb-12">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">What Is Not Included</h3>
+            <div className="prose prose-slate prose-sm max-w-none">
+              <MarkdownContent content={data.exclusions} />
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <footer className="pt-12 border-t border-slate-100 text-sm text-slate-400">

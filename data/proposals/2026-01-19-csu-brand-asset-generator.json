@@ -1,0 +1,106 @@
+{
+  "id": "2026-01-19-csu-brand-asset-generator",
+  "createdAt": "2026-01-19",
+  "updatedAt": "2026-01-19",
+  "status": "draft",
+  "projectType": "app",
+  "archivePath": "archive/csu-oie-brand-asset-generator",
+  "clientId": "csu-oie",
+  "clientName": "Chrisana Hughes",
+  "clientCompany": "CSU OIE",
+  "projectName": "Brand Assets Generator",
+  "date": "January 19, 2026",
+  "expirationDate": "February 19, 2026",
+  "projectDescription": "A brand-safe ad generator that helps teams quickly create consistent, on-brand marketing assets across digital and print formats. Users input content like images, headlines, dates, and links, and the app handles layout, styling, sizing, and export while maintaining CSU brand standards.",
+  "estimatedTimeline": "8-12 weeks from kickoff to launch.",
+  "internalNotes": "Full app build including all current functionality and planned features. Comprehensive tool for OIE teams.",
+  "phases": [
+    {
+      "name": "Discovery & Planning",
+      "description": "Document requirements, plan system architecture, define data models, and establish brand rule specifications.",
+      "lowHrs": 6,
+      "highHrs": 8,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Core Application",
+      "description": "Ad builder with brand typography, colors, and layout rules. 2 starter formats with 2 design options each for testing. Image upload with zoom/reposition/effects, text editing, auto-adjusting fields, export system, user accounts, and saved ads.",
+      "lowHrs": 40,
+      "highHrs": 55,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Extended Features",
+      "description": "Refine the 2 starter designs and add a 3rd design option. Expand to 7 additional formats (8.5×11, 11×17, Instagram square, Instagram 4:5, 1920×1080, 2048×1152, OIE homepage) with all 3 designs each. Multi-export with ZIP download, QR codes, and group branding presets.",
+      "lowHrs": 67,
+      "highHrs": 82,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Launch",
+      "description": "Quality assurance across all formats, browser testing, user acceptance testing, bug fixes, deployment, user guide, and training.",
+      "lowHrs": 21,
+      "highHrs": 25,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "benefits": [
+    {
+      "icon": "Shield",
+      "title": "Brand Guardrails",
+      "description": "Built-in rules ensure every asset follows CSU typography, colors, and layout standards."
+    },
+    {
+      "icon": "Layout",
+      "title": "Multiple Formats",
+      "description": "Create ads for social media, print flyers, presentations, and web in one place."
+    },
+    {
+      "icon": "Palette",
+      "title": "Flexible Layouts",
+      "description": "Choose from multiple design styles that maintain brand cohesion while offering variety."
+    },
+    {
+      "icon": "Smartphone",
+      "title": "Smart Image Editing",
+      "description": "Upload, zoom, reposition, and apply brand-approved effects without design software."
+    },
+    {
+      "icon": "RefreshCw",
+      "title": "Auto-Adjusting Content",
+      "description": "Optional fields like dates and links show or hide without breaking the layout."
+    },
+    {
+      "icon": "Zap",
+      "title": "Batch Export",
+      "description": "Select multiple sizes and download everything as a single ZIP file."
+    },
+    {
+      "icon": "PenTool",
+      "title": "Save & Reuse",
+      "description": "Log in to save ads, duplicate past work, and build on previous designs."
+    },
+    {
+      "icon": "BarChart3",
+      "title": "Resolution Validation",
+      "description": "Automatic warnings when images are too small, with recommended sizes."
+    },
+    {
+      "icon": "Megaphone",
+      "title": "Group Presets",
+      "description": "One-click branding for Pride, NACC, and other groups with correct logos and taglines."
+    }
+  ],
+  "discountPercent": 0,
+  "monthlyFee": 0,
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "id": "2026-01-19-csu-murals-symposium",
+  "createdAt": "2026-01-19",
+  "updatedAt": "2026-01-19",
+  "status": "draft",
+  "projectType": "app",
+  "archivePath": "archive/csu-oie-murals-symposium",
+
+  "clientId": "csu-oie",
+  "clientName": "Chrisana Hughes",
+  "clientCompany": "CSU OIE",
+  "projectName": "MURALS Symposium Platform",
+  "date": "January 19, 2026",
+  "expirationDate": "February 19, 2026",
+
+  "projectDescription": "A custom symposium platform for MURALS that replaces ForagerOne. Students register and submit abstracts, posters, and oral presentations as groups. Judges are assigned submissions and evaluate anonymously. All content lives in a searchable public gallery that serves as a permanent archive.",
+
+  "estimatedTimeline": "8-12 weeks from kickoff to launch.",
+
+  "internalNotes": "Replacing ForagerOne/Symposium. Scope based on conversation from 1.5 years ago—may need refinement during discovery. Key features: group-based submissions, anonymous judging, public gallery, abstract booklet export. Future: audience registration tracking.",
+
+  "phases": [
+    {
+      "name": "Discovery & Planning",
+      "description": "Document requirements, define user roles (students, judges, admins), plan data models, and confirm full scope. Note: original conversation was 1.5 years ago—discovery may uncover additional requirements.",
+      "lowHrs": 8,
+      "highHrs": 12,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Core Platform",
+      "description": "Registration system with group names and CSU ID verification. Submission forms for abstracts, posters (PDF/image), and oral presentations (PPT embed, video embed). Admin dashboard for deadline control and content management.",
+      "lowHrs": 45,
+      "highHrs": 60,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Judging System",
+      "description": "Anonymous judging workflow where judges see only assigned submissions. Custom evaluation forms with scoring criteria. Score aggregation and winner selection tools. Judge assignment and management for admins.",
+      "lowHrs": 35,
+      "highHrs": 45,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Public Gallery & Archive",
+      "description": "Searchable public gallery displaying posters, abstracts, and presentations organized by category. Permanent archive for past participants. Abstract booklet generation (organized by category, then alphabetically).",
+      "lowHrs": 25,
+      "highHrs": 35,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Launch",
+      "description": "Quality assurance, user acceptance testing with sample submissions, bug fixes, deployment, admin training, and documentation.",
+      "lowHrs": 20,
+      "highHrs": 25,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+
+  "benefits": [
+    { "icon": "Layout", "title": "Group Submissions", "description": "Any team member can submit on behalf of their group using a shared group name." },
+    { "icon": "Shield", "title": "Anonymous Judging", "description": "Judges evaluate submissions without seeing student names, ensuring fair assessment." },
+    { "icon": "PenTool", "title": "Multi-Format Support", "description": "Accept posters, PDFs, PowerPoint presentations, and embedded videos in one place." },
+    { "icon": "BarChart3", "title": "Scoring & Results", "description": "Custom evaluation criteria with automatic score aggregation and winner selection." },
+    { "icon": "Smartphone", "title": "Public Gallery", "description": "Showcase all submissions in a searchable, browsable gallery open to the community." },
+    { "icon": "RefreshCw", "title": "Permanent Archive", "description": "Past submissions remain accessible forever so participants can reference their work." },
+    { "icon": "Zap", "title": "Abstract Booklet", "description": "Generate a formatted PDF booklet organized by category and alphabetically by title." },
+    { "icon": "Megaphone", "title": "Deadline Control", "description": "Admins can open, close, and extend submission windows without developer help." },
+    { "icon": "Palette", "title": "CSU Branding", "description": "Fully branded experience matching CSU and OIE visual identity." }
+  ],
+
+  "discountPercent": 0,
+  "monthlyFee": 0,
+
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

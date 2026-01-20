@@ -1,0 +1,5 @@
+The basic of the app is that they want to be able to have students submit
+  their presentations to the tool, then judges can go in and give feedback and ratings for each
+  of the submissions, then the winner is declared. The submission might include a PPT
+  presentation that would be embedded on the page, a PDF writeup text-based document, and perhaps
+  a video embed. Then judging happens anonymously. I'm going off of memory from a conversation that happened a year and half ago, so also be sure to mention that in the estimate that there may be other scope pieces that I'm forgetting. 

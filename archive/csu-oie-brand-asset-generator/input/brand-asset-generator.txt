@@ -1,0 +1,44 @@
+## App summary
+
+This app is a brand-safe ad generator designed to help teams quickly create consistent, on-brand marketing assets without needing design skills. Users drop in basic content like images, headlines, dates, and links, and the app handles layout, styling, sizing, and output so everything aligns with CSU brand standards while still allowing visual variety.
+
+The tool works as a flexible template system rather than a single rigid design. Users can switch between formats, layouts, and photo treatments, reposition and zoom images, and choose brand-approved visual effects. Text automatically reflows based on what’s included, and optional elements like dates and times can be shown or hidden without breaking the layout.
+
+Assets export at the correct resolution for their intended use, whether that’s social media or print. The goal is speed, consistency, and confidence: put in raw content, get a polished, ready-to-use ad.
+
+## Current functionality
+
+- Create ads that follow brand typography, colors, and layout rules  
+- Switch between formats like square and horizontal social posts  
+- Choose between multiple layout styles that still feel cohesive  
+- Upload images, zoom and reposition them visually  
+- Apply brand-approved photo effects and overlays  
+- Edit headlines and subhead text with built-in character limits  
+- Add optional date, time, and short link fields that auto-adjust the layout  
+- Warn users when images are too low-resolution and recommend better sizes  
+- Export optimized images sized correctly for each platform  
+- Automatically generate print-ready, high-resolution files for flyers  
+
+## Planned features
+
+- Log in and save ads to a personal account  
+- View, duplicate, and reuse past ads  
+- Select multiple output sizes at once and download everything as a single ZIP  
+- Support additional sizes, including  
+  - 8.5 × 11
+  - 11 × 17  
+  - Instagram square  
+  - Instagram 4:5  
+  - 1920 × 1080 with presentation-safe margins  
+  - 2048 × 1152  
+  - OIE website homepage ad format  
+- Use size-specific designs tailored to each format rather than simple resizing  
+- Offer alternative layouts with larger photo areas and reduced text  
+- Generate QR codes from URLs and automatically embed them in print ads  
+- Choose a group from a dropdown (Pride, NACC, etc.) to automatically apply  
+  - The correct group logo  
+  - The “All are welcome and invited to engage” tagline  
+
+## Positioning in one sentence
+
+A fast, easy way to turn raw content into polished, on-brand ads across digital and print formats, with built-in guardrails that protect brand consistency while still allowing creative flexibility.

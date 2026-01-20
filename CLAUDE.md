@@ -105,19 +105,38 @@ After creating the proposal JSON:
 
 This keeps `/input/` empty for future projects.
 
-### Step 7: User Reviews and Edits in Browser
+### Step 7: Claude Opens Proposal in Browser
 
-1. Open http://localhost:5174
-2. Click the proposal from the dashboard
-3. Edit any field by clicking on it
-4. Changes auto-save every second
-5. Print to PDF and **save to archive folder** as `proposal.pdf`
+After archiving, start the server (if needed) and open the proposal:
+
+1. **Start servers** if not already running:
+   ```bash
+   npm start
+   ```
+   Run in background. Wait 3 seconds for startup.
+
+2. **Check which port Vite is using** by reading the server output (typically 5173-5176)
+
+3. **Open the proposal** using the correct port:
+   ```bash
+   open "http://localhost:{port}/{proposal-id}"
+   ```
+
+   Note: The route is `/{proposal-id}` directly, NOT `/proposal/{proposal-id}`.
+
+### Step 8: User Reviews and Edits in Browser
+
+1. Edit any field by clicking on it
+2. Changes auto-save every second
+3. Print to PDF and **save to archive folder** as `proposal.pdf`
 
 ---
 
 ## Proposal JSON Schema
 
-**IMPORTANT:** Benefits and upsells are NOT stored in proposals. They come from the shared template based on `projectType`. Editing a template updates ALL proposals of that type.
+**Benefits by project type:**
+- **Web, Logo, Print:** Benefits come from shared templates in `/data/templates/`. Do NOT include `benefits` in the proposal JSON.
+- **App:** Each app is unique, so include custom `benefits` array directly in the proposal JSON tailored to that app's functionality.
 
 ```json
 {
@@ -125,7 +144,7 @@ This keeps `/input/` empty for future projects.
   "createdAt": "2026-01-19",
   "updatedAt": "2026-01-19",
   "status": "draft",
-  "projectType": "web",  // "web", "logo", "print", or "app" - links to template
+  "projectType": "web",  // "web", "logo", "print", or "app"
   "archivePath": "archive/client-slug-project-slug",
 
   "clientId": "client-slug",
@@ -143,8 +162,19 @@ This keeps `/input/` empty for future projects.
 
   "phases": [],      // Customized per project (NOT from template)
 
+  // For app projects ONLY - include custom benefits:
+  "benefits": [
+    { "icon": "Shield", "title": "Feature Name", "description": "What this feature does for the user." }
+  ],
+
+  // For complex projects - detailed feature breakdown (markdown supported)
+  "projectSpecifics": "## Section Header\n- **Feature:** Description of feature.\n- **Another Feature:** More details.",
+
+  // What's NOT included in the estimate (markdown supported)
+  "exclusions": "- Content creation\n- Off-page SEO\n- Additional features not listed",
+
   "discountPercent": 0,
-  "monthlyFee": 39,  // From template (0 for non-web projects)
+  "monthlyFee": 39,  // From template (39 for web/app, 0 for logo/print)
 
   "contactInfo": {
     "name": "Adrial Dale",
@@ -155,8 +185,6 @@ This keeps `/input/` empty for future projects.
 }
 ```
 
-**DO NOT include `benefits` or `upsells` in proposal JSON.** These are pulled from `/data/templates/{projectType}.json` at render time.
-
 ---
 
 ## Project Templates
@@ -164,10 +192,12 @@ This keeps `/input/` empty for future projects.
 Templates are stored in `/data/templates/` and contain:
 - `type` - identifier (web, logo, print, app)
 - `label` - display name
-- `benefits` - 6-9 items for "What's Included" section (app has 9)
-- `upsells` - 3 items for "Also Available" section
+- `benefits` - 6-9 items for "What's Included" section (ignored for app projects—use custom benefits)
+- `upsells` - 2-3 items for "Also Available" section
 - `defaultPhases` - starting point phases (customize per project)
-- `monthlyFee` - default monthly fee (39 for web, 0 for others)
+- `monthlyFee` - default monthly fee (39 for web/app, 0 for logo/print)
+- `designIncludes` - standard features included in design work (web/app only)
+- `hostingIncludes` - features included with monthly hosting fee (web/app only)
 
 **Available templates:**
 | Type | File | Use For |
@@ -183,11 +213,12 @@ To edit templates, modify the JSON files directly in `/data/templates/`.
 
 ## Phase Estimation Guidelines
 
-1. **Break work into logical phases** - typically 3-6 phases for simple projects, up to 10 for comprehensive builds
+1. **Break work into logical phases** - typically 4-5 phases for apps, consolidate related features together
 2. **Use realistic hour ranges** - low is optimistic, high is conservative
 3. **Standard rate is $120/hr** unless client has a discount
-4. **Customize from template** - use `defaultPhases` as starting point, adjust descriptions and hours for specific project
-5. **For larger projects** - consider adding dedicated phases for Documentation, Training, and Post-Launch Support
+4. **Efficient workflow pricing** - Adrial uses AI-assisted development, so estimates should be competitive with senior freelance designers/developers while staying well below agency rates. This typically reflects ~40% efficiency gain over traditional estimates.
+5. **Customize from template** - use `defaultPhases` as starting point, adjust descriptions and hours for specific project
+6. **For app projects** - include custom `benefits` array in the proposal JSON tailored to that app's specific functionality (see schema above)
 
 ---
 
@@ -272,7 +303,10 @@ When asked to update a proposal:
 **Page Structure:**
 - Page 1: Header, title block, overview, What's Included (benefits grid)
 - Page 2+: Estimate table (headers repeat on each page if table overflows)
-- Final page: Estimated Timeline + Also Available (grouped together)
+- Timeline + Also Available page (grouped together)
+- Your Website Design Includes + Hosting Includes page (if applicable, from template)
+- Project Specifics page (if `projectSpecifics` field is populated—for complex projects)
+- What Is Not Included section (if `exclusions` field is populated)
 
 **Print CSS Features:**
 - Section headings: Red (#bb2225), uppercase, bold
