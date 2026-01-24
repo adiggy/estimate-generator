@@ -32,6 +32,14 @@
       "email": "",
       "discountPercent": 0,
       "notes": "CRC Assessment Bridge project. Contact for Cultural Resource Centers assessment automation."
+    },
+    {
+      "id": "unc-water-institute",
+      "name": "Catherine Rierson",
+      "company": "UNC Water Institute",
+      "email": "waterinstitute@unc.edu",
+      "discountPercent": 0,
+      "notes": "Water Institute at UNC Gillings School of Global Public Health. Catherine is Conference & Project Coordinator. Website rebrand project due Feb 28, 2026 for UNC brand compliance."
     }
   ]
 }

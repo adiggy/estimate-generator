@@ -143,7 +143,7 @@ npm run push-proposal {proposal-id}
 
 Then share the client view link:
 ```
-https://estimate-generator-eight.vercel.app/{proposal-id}?view=1
+https://adesigns-estimate.vercel.app/{proposal-id}?view=1
 ```
 
 ---
@@ -308,7 +308,7 @@ npm run dev   # Vite dev server on port 5173/5174
 
 The app is deployed on **Vercel** with a **Neon PostgreSQL** database.
 
-**Live URL:** https://estimate-generator-eight.vercel.app
+**Live URL:** https://adesigns-estimate.vercel.app
 
 ### Database (Neon)
 
@@ -345,7 +345,7 @@ Clients can view proposals via a shareable link without needing to authenticate.
 
 ### View Mode URL Format
 ```
-https://estimate-generator-eight.vercel.app/{proposal-id}?view=1
+https://adesigns-estimate.vercel.app/{proposal-id}?view=1
 ```
 
 ### View Mode Features
@@ -425,3 +425,5 @@ When estimating project timelines:
 | 150-220 hrs | 10-14 weeks |
 
 Include post-launch support period if applicable (e.g., "followed by 30 days of post-launch support").
+
+Whenever we start a new round of work together, say "Ahoy matey, I have read the CLAUDE.md file and am all caught up!"

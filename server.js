@@ -14,6 +14,18 @@ const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 app.use(cors());
 app.use(express.json());
 
+// Auth endpoint (matches Vercel serverless function)
+app.post('/api/auth', (req, res) => {
+  const { pin } = req.body;
+  const correctPin = process.env.EDIT_PIN || '6350';
+
+  if (pin === correctPin) {
+    res.json({ success: true });
+  } else {
+    res.status(401).json({ error: 'Invalid PIN' });
+  }
+});
+
 // Get all clients
 app.get('/api/clients', (req, res) => {
   try {
