@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="7px" height="12px" viewBox="0 0 7 12" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>arrow-right</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="homepage-v2" transform="translate(-984.000000, -983.000000)" fill="#646B71" fill-rule="nonzero">
+            <g id="Group-17" transform="translate(832.000000, 324.000000)">
+                <g id="Group-9" transform="translate(0.000000, 652.000000)">
+                    <g id="arrow-right" transform="translate(155.587500, 13.292500) rotate(-360.000000) translate(-155.587500, -13.292500) translate(152.295000, 7.705000)">
+                        <path d="M0.2925,9.4625 L4.1725,5.5825 L0.2925,1.7025 C-0.0975,1.3125 -0.0975,0.6825 0.2925,0.2925 C0.6825,-0.0975 1.3125,-0.0975 1.7025,0.2925 L6.2925,4.8825 C6.6825,5.2725 6.6825,5.9025 6.2925,6.2925 L1.7025,10.8825 C1.3125,11.2725 0.6825,11.2725 0.2925,10.8825 C-0.0875,10.4925 -0.0975,9.8525 0.2925,9.4625 Z" id="Path"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

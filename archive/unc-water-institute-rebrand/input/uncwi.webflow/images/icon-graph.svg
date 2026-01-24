@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="38px" height="39px" viewBox="0 0 38 39" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>icon-graph</title>
+    <defs>
+        <polygon id="path-1" points="0 0 4.88872728 0 4.88872728 8.75006198 0 8.75006198"></polygon>
+        <polygon id="path-3" points="0 0 4.88872728 0 4.88872728 19.9998229 0 19.9998229"></polygon>
+        <polygon id="path-5" points="0 0 4.88869265 0 4.88869265 15.0001417 0 15.0001417"></polygon>
+    </defs>
+    <g id="Web-Pages" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Conf-mktg-page-design" transform="translate(-871.000000, -1410.000000)">
+            <g id="icon-graph" transform="translate(871.000000, 1410.270519)">
+                <circle id="Oval-Copy-4" fill="#FFFFFF" cx="19" cy="19" r="19"></circle>
+                <g id="Group-10" transform="translate(8.000000, 8.729481)">
+                    <g id="Group-3" transform="translate(0.000000, 11.249938)">
+                        <mask id="mask-2" fill="white">
+                            <use xlink:href="#path-1"></use>
+                        </mask>
+                        <g id="Clip-2"></g>
+                        <path d="M1.22209525,0 L3.66663204,0 C4.34157214,0 4.88872728,0.559589162 4.88872728,1.24986719 L4.88872728,7.49991146 C4.88872728,8.19054365 4.34157214,8.75013281 3.66663204,8.75013281 L1.22209525,8.75013281 C0.54715514,8.75013281 0,8.19054365 0,7.49991146 L0,1.24986719 C0,0.559589162 0.54715514,0 1.22209525,0" id="Fill-1" fill="#165885" mask="url(#mask-2)"></path>
+                    </g>
+                    <g id="Group-6" transform="translate(8.555636, 0.000000)">
+                        <mask id="mask-4" fill="white">
+                            <use xlink:href="#path-3"></use>
+                        </mask>
+                        <g id="Clip-5"></g>
+                        <path d="M1.22209525,-0.000177085178 L3.66663204,-0.000177085178 C4.34157214,-0.000177085178 4.88872728,0.559412077 4.88872728,1.2496901 L4.88872728,18.7499557 C4.88872728,19.4402338 4.34157214,19.9998229 3.66663204,19.9998229 L1.22209525,19.9998229 C0.54715514,19.9998229 0,19.4402338 0,18.7499557 L0,1.2496901 C0,0.559412077 0.54715514,-0.000177085178 1.22209525,-0.000177085178" id="Fill-4" fill="#4B9BD2" mask="url(#mask-4)"></path>
+                    </g>
+                    <g id="Group-9" transform="translate(17.111307, 4.999858)">
+                        <mask id="mask-6" fill="white">
+                            <use xlink:href="#path-5"></use>
+                        </mask>
+                        <g id="Clip-8"></g>
+                        <path d="M1.22209525,0 L3.66663204,0 C4.34157214,0 4.88872728,0.559589162 4.88872728,1.24986719 L4.88872728,13.7499557 C4.88872728,14.4405879 4.34157214,15.0001771 3.66663204,15.0001771 L1.22209525,15.0001771 C0.54715514,15.0001771 0,14.4405879 0,13.7499557 L0,1.24986719 C0,0.559589162 0.54715514,0 1.22209525,0" id="Fill-7" fill="#165885" mask="url(#mask-6)"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
