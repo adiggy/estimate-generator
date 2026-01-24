@@ -663,7 +663,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
               { title: 'Timeline & Also Available', page: 4 },
             ]
             let nextPage = 5
-            if ((data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes)) {
+            if ((template.designIncludes && !data.hideDesignIncludes) || (data.monthlyFee > 0 && template.hostingIncludes)) {
               sections.push({ title: 'Design & Hosting Includes', page: nextPage++ })
             }
             if (data.projectSpecifics) {
@@ -807,12 +807,12 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         </div>
 
         {/* Website/Hosting Includes - conditional on having a monthly fee */}
-        {(data.monthlyFee > 0 || template.designIncludes) && (template.designIncludes || template.hostingIncludes) && (
+        {((template.designIncludes && !data.hideDesignIncludes) || (data.monthlyFee > 0 && template.hostingIncludes)) && (
           <>
           <PageBreak hidden={isViewMode} />
           <div className="mb-12 break-before-page">
             {/* Design Includes */}
-            {template.designIncludes && (
+            {template.designIncludes && !data.hideDesignIncludes && (
               <div className="mb-8">
                 <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Your Website Design Includes</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">

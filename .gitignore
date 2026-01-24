@@ -28,3 +28,4 @@ working/
 
 # Archive PDFs (keep structure, not large files)
 archive/**/*.pdf
+.vercel
