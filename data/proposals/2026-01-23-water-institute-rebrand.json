@@ -15,9 +15,9 @@
   "date": "January 24, 2026",
   "expirationDate": "February 24, 2026",
 
-  "projectDescription": "Redesign the Water Institute website to comply with UNC's new university-wide brand architecture. This includes retiring the standalone Water Institute logo, implementing the new Gillings School signature system, updating typography to Open Sans, and integrating the UNC website toolbar and argyle graphic elements across all pages. As part of this project, we will upgrade the website architecture with modern code that enables faster updates and improvements in the future.",
+  "projectDescription": "Redesign the Water Institute website to comply with UNC's new university-wide brand architecture. This includes retiring the standalone Water Institute logo, implementing the new Gillings School signature system, updating typography to Open Sans, and integrating the UNC website toolbar and argyle graphic elements across all pages. As part of this project, we will migrate the site to a modern headless CMS architecture with a separate content database, enabling faster page loads, easier content editing, and more flexible future development.",
 
-  "estimatedTimeline": "4 weeks to meet the February 28, 2026 deadline. To hit this target, we need to officially kick off by Wednesday, January 28, 2026.",
+  "estimatedTimeline": "4 weeks to meet the February 28, 2026 deadline. To hit this target, we need to kick off by the end of January 2026.",
 
   "internalNotes": "Rush job - UNC brand compliance required by Feb 28, 2026. Existing site built by Adrial Designs. Moving to Supabase + Sanity stack. 33 static pages + 14 CMS templates. ~1,000 CMS items to migrate. Reusing existing images/graphics. No monthly hosting fee in this estimate - they handle their own infrastructure.",
 
@@ -25,56 +25,56 @@
     {
       "name": "Brand Audit & Planning",
       "description": "Comprehensive review of all 33 static pages and 14 CMS templates to map logo instances, typography usage, and graphic elements requiring updates. Document implementation roadmap aligned with UNC brand guidelines.",
-      "lowHrs": 10,
-      "highHrs": 12,
+      "lowHrs": 12,
+      "highHrs": 15,
       "rate": 120,
       "optional": false
     },
     {
       "name": "Design System & Components",
       "description": "Create new header component with UNC toolbar and typeset 'The Water Institute' text. Design updated footer with Gillings School signature. Establish Open Sans typography system and integrate argyle graphic elements per brand guidelines.",
-      "lowHrs": 16,
-      "highHrs": 20,
-      "rate": 120,
-      "optional": false
-    },
-    {
-      "name": "Static Page Development",
-      "description": "Rebuild all 33 static pages with new brand system and upgraded architecture: Homepage, About section (4 pages), Conference pages (14 pages), Our Work section (11 pages), and core pages (Join Us, Donors, 404).",
-      "lowHrs": 28,
-      "highHrs": 36,
-      "rate": 120,
-      "optional": false
-    },
-    {
-      "name": "CMS Templates & Database Migration",
-      "description": "Build all 14 CMS collection templates with new brand styling. Migrate approximately 1,000 content items (team profiles, projects, publications, events, knowledge articles, etc.) to the upgraded platform.",
-      "lowHrs": 32,
-      "highHrs": 42,
-      "rate": 120,
-      "optional": false
-    },
-    {
-      "name": "Development & Integration",
-      "description": "Implement all design updates with upgraded website architecture. Update CSS for new typography and color treatments. Integrate new header/footer components. Remove legacy Water Institute logo assets and replace with new brand elements.",
-      "lowHrs": 18,
+      "lowHrs": 20,
       "highHrs": 24,
       "rate": 120,
       "optional": false
     },
     {
+      "name": "Static Page Development",
+      "description": "Design and build all 33 static page layouts with new brand system. Optimize key pages for better usability, flow, and comprehension. Reorganize page layouts where needed to better accommodate information and user flow, particularly on the homepage and conference landing pages.",
+      "lowHrs": 40,
+      "highHrs": 50,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "CMS Templates & Database Migration",
+      "description": "Build all 14 CMS collection templates with new brand styling. Migrate approximately 1,000 content items (team profiles, projects, publications, events, knowledge articles, etc.) to the new content management system and database.",
+      "lowHrs": 44,
+      "highHrs": 56,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Development & Integration",
+      "description": "Code implementation and technical build-out. Migrate site to a modern headless CMS with a separate content database, enabling faster page loads, easier content editing, and more flexible future updates. Update CSS for new typography and color treatments. Integrate new header/footer components across all pages.",
+      "lowHrs": 24,
+      "highHrs": 32,
+      "rate": 120,
+      "optional": false
+    },
+    {
       "name": "QA & Brand Compliance Review",
-      "description": "Cross-browser and device testing. Verify brand compliance against UNC guidelines across all pages. Final review with client and Gillings Communications team. Deploy to production.",
-      "lowHrs": 13,
-      "highHrs": 16,
+      "description": "Cross-browser and device testing. Verify brand compliance against UNC guidelines across all pages. Migrate all existing 301 redirects and create new ones as needed to ensure old URLs forward correctly. Final review with client. Deploy to production.",
+      "lowHrs": 16,
+      "highHrs": 22,
       "rate": 120,
       "optional": false
     }
   ],
 
-  "projectSpecifics": "## Static Pages (33 pages)\n\n**Core Pages (4)**\n- Homepage\n- 404 Error Page\n- Join Us\n- Donors and Granters\n\n**About Section (4 pages)**\n- About Landing\n- History & Process\n- Our Team (listing)\n- Job Openings (listing)\n\n**Our Work Section (11 pages)**\n- Our Work Landing\n- Conferences (listing)\n- Research Profiles (listing)\n- Our Projects (listing)\n- Publications (listing)\n- Calendar of Events\n- NC Water News Newsletter\n- What's on Tap Newsletter\n- Knowledge Hub (listing)\n- Student Page\n- Student Blogs (listing)\n\n**Conference Pages (14 pages)**\n- Water & Health Conference (main)\n- Water Health Registration\n- 2022 Conference + Agenda + Virtual\n- 2023 Conference + Abstracts Info\n- 2024 Abstracts Info + Unfinished Business + Virtual\n- 2025 Conference + Virtual\n- Environmental Health Services LMIC\n\n---\n\n## CMS Templates & Content Migration (14 templates)\n\n| Template | Items to Migrate |\n|----------|----------|\n| Team Member Profiles | 35 |\n| Project Details | 40 |\n| Knowledge Hub Articles | 51 |\n| Research Profiles | 3 |\n| Conference Archives | 15 |\n| Event Details | 274 |\n| Publications | ~500-600 |\n| Student Blog Posts | 5 |\n| Job Openings | Variable |\n| Announcements | Variable |\n| Conference FAQs | Variable |\n| Conference Helpful Links | Variable |\n| Conference Updates | Variable |\n| Banners | Variable |\n\n**Total CMS Items: ~925-1,025**\n\n---\n\n## Brand Implementation Requirements\n\n- **Logo:** Replace standalone Water Institute logo with Gillings School signature (interlocking NC + wordmark)\n- **Unit Name:** \"The Water Institute\" typeset in Open Sans Bold, positioned per brand guidelines\n- **Header:** Implement new UNC website toolbar with interlocking NC\n- **Footer:** Gillings School or UNC signature\n- **Typography:** Open Sans (Bold for headings, Regular for body)\n- **Graphics:** Integrate argyle pattern elements where appropriate\n- **Colors:** Maintain existing Carolina Blue, Navy palette\n- **Images:** All existing photography and graphics from the current website will be reused",
+  "projectSpecifics": "## Static Pages (33 pages)\n\n**Core Pages (4)**\n- Homepage\n- 404 Error Page\n- Join Us\n- Donors and Granters\n\n**About Section (4 pages)**\n- About Landing\n- History & Process\n- Our Team (listing)\n- Job Openings (listing)\n\n**Our Work Section (11 pages)**\n- Our Work Landing\n- Conferences (listing)\n- Research Profiles (listing)\n- Our Projects (listing)\n- Publications (listing)\n- Calendar of Events\n- NC Water News Newsletter\n- What's on Tap Newsletter\n- Knowledge Hub (listing)\n- Student Page\n- Student Blogs (listing)\n\n**Conference Pages (14 separate pages)**\n- Water & Health Conference (main)\n- Water Health Registration\n- 2022: Conference, Agenda, Virtual (3 pages)\n- 2023: Conference, Abstracts Info (2 pages)\n- 2024: Abstracts Info, Unfinished Business, Virtual (3 pages)\n- 2025: Conference, Virtual (2 pages)\n- Environmental Health Services LMIC\n\n---\n\n## CMS Templates & Content Migration (14 templates)\n\n| Template | Items to Migrate |\n|----------|----------|\n| Team Member Profiles | 35 |\n| Project Details | 40 |\n| Knowledge Hub Articles | 51 |\n| Research Profiles | 3 |\n| Conference Archives | 15 |\n| Event Details | 274 |\n| Publications | ~500-600 |\n| Student Blog Posts | 5 |\n| Job Openings | Variable |\n| Announcements | Variable |\n| Conference FAQs | Variable |\n| Conference Helpful Links | Variable |\n| Conference Updates | Variable |\n| Banners | Variable |\n\n**Total CMS Items: ~925-1,025**\n\n---\n\n## Brand Implementation Requirements\n\n- **Logo:** Replace standalone Water Institute logo with Gillings School signature (interlocking NC + wordmark)\n- **Unit Name:** \"The Water Institute\" typeset in Open Sans Bold, positioned per brand guidelines\n- **Header:** Implement new UNC website toolbar with interlocking NC\n- **Footer:** Gillings School or UNC signature\n- **Typography:** Open Sans (Bold for headings, Regular for body)\n- **Graphics:** Integrate argyle pattern elements where appropriate\n- **Colors:** Maintain existing Carolina Blue, Navy palette\n- **Images:** All existing photography and graphics from the current website will be reused",
 
-  "exclusions": "- Content creation or copywriting\n- New photography or image sourcing (existing images will be reused)\n- SEO optimization beyond existing setup\n- Social media profile updates\n- Print collateral design\n- Ongoing maintenance after launch",
+  "exclusions": "- Content creation or copywriting\n- New photography or image sourcing (existing images will be reused)\n- SEO optimization beyond existing setup\n- Social media profile updates\n- Print collateral design\n- Ongoing maintenance after launch\n- Additional revision rounds beyond two per phase",
 
   "upsells": [
     { "icon": "Megaphone", "title": "Content & SEO Strategy", "description": "Keyword research, content calendar, and on-page optimization to drive organic traffic." }
