@@ -143,7 +143,7 @@ function StatsWidget() {
           </div>
         ) : (
           <a
-            href="/api/os-beta/auth/google"
+            href={`${API_BASE}/auth/google`}
             className="flex items-center gap-2 text-white/60 hover:text-white"
           >
             <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
