@@ -505,19 +505,65 @@ All OS endpoints are under `/api/os-beta/`:
 | `/time-logs/{id}` | GET, PUT, DELETE | Single time log operations |
 | `/invoices` | GET, POST | List/create invoices |
 | `/invoices/{id}` | GET, PUT, DELETE | Single invoice operations |
+| `/proposals` | GET, POST | OS Beta proposals (separate from live proposals) |
+| `/proposals/{id}` | GET, PUT, DELETE | Single proposal operations |
 | `/stats` | GET | CFO metrics (unbilled, unpaid, revenue) |
 | `/search?q=term` | GET | Global search across all data |
+
+**Time Log Actions (PUT /time-logs/{id}):**
+- `action: 'pause'` - Pause active timer, accumulate seconds
+- `action: 'resume'` - Resume paused timer
+- `action: 'stop'` - Stop timer without finalizing
+- `action: 'finalize'` - Finalize timer, round to 15 minutes, mark ready for invoice
+- `action: 'set_time'` - Manually set accumulated_seconds (for editing timer)
+
+**Invoice Creation (POST /invoices):**
+- Include `time_log_ids` array to mark those logs as invoiced
+- Include `line_items` array with description, quantity, rate, amount
+
+**Invoice Update (PUT /invoices/{id}):**
+- Can include `time_log_ids` to mark additional logs as invoiced (for adding to existing draft)
 
 ### UI Pages
 
 | Route | Page | Purpose |
 |-------|------|---------|
-| `/dashboard/os-beta` | Projects | Smart grid of active projects (excludes hosting) |
+| `/dashboard/os-beta` | Dashboard | Overview with stats, recent projects |
+| `/dashboard/os-beta/proposals` | Proposals | List of OS Beta proposals |
+| `/dashboard/os-beta/proposals/{id}/edit` | Proposal Edit | Edit proposal with delete option |
+| `/dashboard/os-beta/projects` | Projects | Smart grid of active projects (excludes hosting) |
+| `/dashboard/os-beta/projects/{id}` | Project Details | Metadata, phases, chunks, time logs |
 | `/dashboard/os-beta/hosting` | Hosting | Legacy Bonsai clients with MRR display |
-| `/dashboard/os-beta/projects/{id}` | Project Details | Gantt view with chunks by phase |
-| `/dashboard/os-beta/time` | Time Tracking | Mobile-first timer interface |
-| `/dashboard/os-beta/invoices` | Invoices | Invoice list and creation |
-| `/dashboard/os-beta/search` | Search | Global search results |
+| `/dashboard/os-beta/time` | Time Tracking | Mobile-first timer with editable display |
+| `/dashboard/os-beta/invoices` | Invoices | Invoice list, creation, editing |
+| `/dashboard/os-beta/invoices?create=1` | New Invoice | Auto-opens create invoice modal |
+| `/dashboard/os-beta/schedule` | Schedule | Calendar view of scheduled work |
+
+### UI Features
+
+**Header:**
+- Live search with grouped results (Projects, Invoices, Clients)
+- Click search icon or press `/` to open
+
+**Time Tracking:**
+- **Editable Timer:** Click HH:MM:SS display to edit time while running
+- **15-Minute Rounding:** Finalized timers round UP to nearest 15 minutes
+- **Ready to Invoice:** Section shows finalized but unbilled time entries
+- **Create Invoice Link:** Quick link to invoices page with modal auto-open
+
+**Invoices:**
+- **Add to Existing Draft:** When creating invoice, option to add to existing draft for same client
+- **Editable Line Items:** Click description or hours to edit inline
+- **Projects/Hosting Tabs:** Separate views for project work vs recurring hosting
+- **Status Workflow:** Draft → Sent → Paid (or Void)
+
+**Projects:**
+- **Metadata Display:** Status, priority, billing type, rate, budget, due date, last touched
+- **View Proposal Link:** Quick link back to source proposal (if created from one)
+
+**General:**
+- **ConfirmModal:** Nice modal dialogs for delete confirmations (replaces browser alerts)
+- **Brand Slate Buttons:** Primary buttons use brand-slate (#2b303a) not red
 
 ### Status Colors
 
@@ -557,14 +603,30 @@ The system imported 499 historical projects from Airtable. Status mapping:
 | File | Purpose |
 |------|---------|
 | `scripts/schema_extension.sql` | Database schema for OS tables |
-| `scripts/lib/db.js` | Shared database utilities |
+| `scripts/lib/db.js` | Shared database utilities (CRUD, search, stats) |
 | `scripts/import-legacy.js` | Airtable CSV importer |
 | `scripts/time-log.js` | Time tracking CLI |
 | `scripts/generate-invoice.js` | Invoice generation CLI |
 | `scripts/chunker.js` | Project scope breakdown |
-| `scripts/scheduler.js` | Calendar scheduling |
-| `app/api/os-beta/*` | Serverless API endpoints |
-| `app/src/os-beta/*` | React UI components |
+| `scripts/scheduler.js` | Calendar scheduling with Google Calendar |
+| `scripts/convert-proposals.js` | Convert proposals to projects |
+| `app/api/os-beta/*` | Serverless API endpoints (Vercel) |
+| `server.js` | Local Express API server (port 3002) |
+
+**UI Components (`app/src/os-beta/`):**
+
+| File | Purpose |
+|------|---------|
+| `OsApp.jsx` | Main shell with sidebar, header, search |
+| `components/ConfirmModal.jsx` | Reusable confirmation dialog |
+| `pages/ProjectsPage.jsx` | Projects grid with status filters |
+| `pages/ProjectDetailsPage.jsx` | Project metadata, phases, time logs |
+| `pages/ProposalsPage.jsx` | OS Beta proposals list |
+| `pages/ProposalEditPage.jsx` | Proposal editor with delete |
+| `pages/HostingPage.jsx` | Hosting clients with MRR |
+| `pages/TimePage.jsx` | Timer with editable display |
+| `pages/InvoicesPage.jsx` | Invoice list, create modal, line item editing |
+| `pages/SchedulePage.jsx` | Calendar/schedule view |
 
 ---
 
