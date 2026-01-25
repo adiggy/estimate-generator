@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Check, X, RefreshCw, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, Check, X, RefreshCw, Clock, AlertCircle, ChevronLeft, ChevronRight, DollarSign, TrendingUp } from 'lucide-react'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -53,8 +54,27 @@ function groupByDay(chunks) {
 }
 
 // Day column for week view
-function DayColumn({ day, chunks, hourHeight = 60 }) {
-  const hours = Array.from({ length: 9 }, (_, i) => i + 9) // 9 AM - 5 PM
+function DayColumn({ day, chunks, rocks = [], lunchBreaks = [], hourHeight = 60, onChunkClick }) {
+  const hours = Array.from({ length: 8 }, (_, i) => i + 12) // 12 PM - 7 PM
+
+  // Filter rocks for this day
+  const dayRocks = rocks.filter(rock => {
+    if (rock.allDay) {
+      // All-day events span from start date to end date
+      const rockStart = new Date(rock.start)
+      const rockEnd = new Date(rock.end)
+      return day.date >= rockStart && day.date < rockEnd
+    } else {
+      const rockDate = new Date(rock.start).toDateString()
+      return rockDate === day.date.toDateString()
+    }
+  })
+
+  // Filter lunch breaks for this day
+  const dayLunches = lunchBreaks.filter(lunch => {
+    const lunchDate = new Date(lunch.start).toDateString()
+    return lunchDate === day.date.toDateString()
+  })
 
   return (
     <div className="flex-1 min-w-0">
@@ -77,21 +97,106 @@ function DayColumn({ day, chunks, hourHeight = 60 }) {
           />
         ))}
 
+        {/* Rocks (calendar blockers) - rendered first so chunks appear on top */}
+        {dayRocks.map(rock => {
+          if (rock.allDay) {
+            // All-day event - show as full day banner
+            return (
+              <div
+                key={rock.id}
+                className="absolute left-1 right-1 bg-slate-200 text-slate-600 rounded p-1 overflow-hidden text-xs border border-slate-300"
+                style={{ top: 0, height: 20 }}
+                title={rock.title}
+              >
+                <div className="truncate font-medium">{rock.title}</div>
+              </div>
+            )
+          }
+
+          const start = new Date(rock.start)
+          const end = new Date(rock.end)
+          const startHour = start.getHours() + start.getMinutes() / 60
+          const endHour = end.getHours() + end.getMinutes() / 60
+
+          // Clamp to work hours (12-20)
+          const clampedStart = Math.max(12, Math.min(20, startHour))
+          const clampedEnd = Math.max(12, Math.min(20, endHour))
+
+          if (clampedEnd <= clampedStart) return null // Outside work hours
+
+          const top = (clampedStart - 12) * hourHeight
+          const height = (clampedEnd - clampedStart) * hourHeight
+
+          return (
+            <div
+              key={rock.id}
+              className="absolute left-1 right-1 bg-slate-100 border border-slate-300 text-slate-500 rounded p-1 overflow-hidden text-xs"
+              style={{ top, height: Math.max(height, 20), zIndex: 1 }}
+              title={`${rock.title} (blocked)`}
+            >
+              <div className="truncate font-medium">{rock.title}</div>
+              <div className="truncate opacity-70">
+                {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Lunch breaks */}
+        {dayLunches.map((lunch, idx) => {
+          const start = new Date(lunch.start)
+          const end = new Date(lunch.end)
+          const startHour = start.getHours() + start.getMinutes() / 60
+          const endHour = end.getHours() + end.getMinutes() / 60
+
+          // Clamp to work hours
+          const clampedStart = Math.max(12, Math.min(20, startHour))
+          const clampedEnd = Math.max(12, Math.min(20, endHour))
+
+          if (clampedEnd <= clampedStart) return null
+
+          const top = (clampedStart - 12) * hourHeight
+          const height = (clampedEnd - clampedStart) * hourHeight
+
+          return (
+            <div
+              key={`lunch-${idx}`}
+              className="absolute left-1 right-1 bg-green-100 border border-green-300 text-green-700 rounded p-1 overflow-hidden text-xs"
+              style={{ top, height: Math.max(height, 24), zIndex: 1 }}
+              title="Lunch / Workout break"
+            >
+              <div className="font-medium truncate">🥗 LUNCH / WORKOUT</div>
+              <div className="truncate opacity-70">
+                {start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              </div>
+            </div>
+          )
+        })}
+
         {/* Scheduled chunks */}
         {chunks.map(chunk => {
           const start = new Date(chunk.draft_scheduled_start)
           const end = new Date(chunk.draft_scheduled_end)
           const startHour = start.getHours() + start.getMinutes() / 60
           const endHour = end.getHours() + end.getMinutes() / 60
-          const top = (startHour - 9) * hourHeight
-          const height = (endHour - startHour) * hourHeight
+
+          // Clamp to visible work hours (12pm-8pm)
+          const clampedStart = Math.max(12, Math.min(20, startHour))
+          const clampedEnd = Math.max(12, Math.min(20, endHour))
+
+          // Skip if entirely outside work hours
+          if (clampedEnd <= clampedStart) return null
+
+          const top = (clampedStart - 12) * hourHeight
+          const height = (clampedEnd - clampedStart) * hourHeight
 
           return (
             <div
               key={chunk.id}
-              className="absolute left-1 right-1 bg-brand-red text-white rounded p-1 overflow-hidden text-xs shadow-sm"
-              style={{ top, height: Math.max(height, 24) }}
-              title={`${chunk.project_name}: ${chunk.name}`}
+              onClick={() => onChunkClick(chunk.project_id, chunk.id)}
+              className="absolute left-1 right-1 bg-brand-red text-white rounded p-1 overflow-hidden text-xs shadow-sm cursor-pointer hover:bg-red-700 transition-colors"
+              style={{ top, height: Math.max(height, 24), zIndex: 2 }}
+              title={`${chunk.project_name}: ${chunk.name} — Click to view project`}
             >
               <div className="font-medium truncate">{chunk.project_name}</div>
               <div className="truncate opacity-80">{chunk.name}</div>
@@ -104,9 +209,9 @@ function DayColumn({ day, chunks, hourHeight = 60 }) {
   )
 }
 
-// Week view calendar
-function WeekView({ draftChunks, weekStart }) {
-  const hours = Array.from({ length: 9 }, (_, i) => i + 9) // 9 AM - 5 PM
+// Week view calendar with navigation
+function WeekView({ draftChunks, rocks = [], lunchBreaks = [], weekStart, onWeekChange, weekOffset, onChunkClick }) {
+  const hours = Array.from({ length: 8 }, (_, i) => i + 12) // 12 PM - 7 PM
   const hourHeight = 60
 
   // Generate 5 days (Mon-Fri)
@@ -122,8 +227,51 @@ function WeekView({ draftChunks, weekStart }) {
     }
   })
 
+  // Calculate week hours
+  const weekChunks = draftChunks.filter(c => {
+    const date = new Date(c.draft_scheduled_start)
+    return date >= weekStart && date < new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+  })
+  const weekHours = weekChunks.reduce((sum, c) => sum + c.hours, 0)
+
+  // Check if there are chunks in adjacent weeks
+  const hasPrevWeek = draftChunks.some(c => {
+    const date = new Date(c.draft_scheduled_start)
+    return date < weekStart
+  })
+  const hasNextWeek = draftChunks.some(c => {
+    const date = new Date(c.draft_scheduled_start)
+    return date >= new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000)
+  })
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Week navigation header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <button
+          onClick={() => onWeekChange(-1)}
+          disabled={!hasPrevWeek}
+          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronLeft className="w-5 h-5 text-slate-600" />
+        </button>
+        <div className="text-center">
+          <div className="font-semibold text-slate-900">
+            Week of {weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </div>
+          <div className="text-sm text-slate-500">
+            {weekHours > 0 ? `${weekChunks.length} chunks (${weekHours}h)` : 'No chunks scheduled'}
+          </div>
+        </div>
+        <button
+          onClick={() => onWeekChange(1)}
+          disabled={!hasNextWeek}
+          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          <ChevronRight className="w-5 h-5 text-slate-600" />
+        </button>
+      </div>
+
       <div className="flex">
         {/* Time column */}
         <div className="w-16 flex-shrink-0 border-r border-slate-200">
@@ -143,7 +291,7 @@ function WeekView({ draftChunks, weekStart }) {
 
         {/* Day columns */}
         {days.map((day, i) => (
-          <DayColumn key={i} day={day} chunks={day.chunks} hourHeight={hourHeight} />
+          <DayColumn key={i} day={day} chunks={day.chunks} rocks={rocks} lunchBreaks={lunchBreaks} hourHeight={hourHeight} onChunkClick={onChunkClick} />
         ))}
       </div>
     </div>
@@ -155,6 +303,18 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
   const totalHours = draftChunks.reduce((sum, c) => sum + c.hours, 0)
   const projectCount = new Set(draftChunks.map(c => c.project_id)).size
 
+  // Calculate actual date range from chunks
+  const sortedChunks = [...draftChunks].sort(
+    (a, b) => new Date(a.draft_scheduled_start) - new Date(b.draft_scheduled_start)
+  )
+  const firstDate = sortedChunks[0]?.draft_scheduled_start
+  const lastDate = sortedChunks[sortedChunks.length - 1]?.draft_scheduled_end
+
+  // Calculate number of weeks
+  const weeksSpan = firstDate && lastDate
+    ? Math.ceil((new Date(lastDate) - new Date(firstDate)) / (7 * 24 * 60 * 60 * 1000))
+    : 1
+
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
       <div className="flex items-start justify-between">
@@ -164,7 +324,8 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
             Draft Schedule
           </h3>
           <p className="text-sm text-slate-500 mt-1">
-            {formatFullDate(draft?.week_start)} - {formatFullDate(draft?.week_end)}
+            {firstDate ? formatDate(firstDate) : formatFullDate(draft?.week_start)} - {lastDate ? formatDate(lastDate) : formatFullDate(draft?.week_end)}
+            {weeksSpan > 1 && <span className="ml-2 text-slate-400">({weeksSpan} weeks)</span>}
           </p>
         </div>
 
@@ -180,7 +341,7 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
           <button
             onClick={onPublish}
             disabled={publishing}
-            className="px-3 py-1.5 text-sm bg-brand-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-1"
+            className="px-3 py-1.5 text-sm bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-1"
           >
             {publishing ? (
               <>
@@ -197,7 +358,7 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-4 gap-4 mt-4">
         <div className="text-center p-3 bg-slate-50 rounded-lg">
           <div className="text-2xl font-bold text-slate-900">{draftChunks.length}</div>
           <div className="text-xs text-slate-500">Chunks</div>
@@ -205,6 +366,10 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
         <div className="text-center p-3 bg-slate-50 rounded-lg">
           <div className="text-2xl font-bold text-slate-900">{totalHours}</div>
           <div className="text-xs text-slate-500">Hours</div>
+        </div>
+        <div className="text-center p-3 bg-slate-50 rounded-lg">
+          <div className="text-2xl font-bold text-slate-900">{weeksSpan}</div>
+          <div className="text-xs text-slate-500">Weeks</div>
         </div>
         <div className="text-center p-3 bg-slate-50 rounded-lg">
           <div className="text-2xl font-bold text-slate-900">{projectCount}</div>
@@ -223,7 +388,7 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
 }
 
 // List view of scheduled chunks
-function ChunkList({ chunks }) {
+function ChunkList({ chunks, onChunkClick }) {
   const grouped = groupByDay(chunks)
 
   return (
@@ -235,7 +400,11 @@ function ChunkList({ chunks }) {
           </div>
           <div className="divide-y divide-slate-100">
             {group.chunks.map(chunk => (
-              <div key={chunk.id} className="px-4 py-3 flex items-center gap-3">
+              <div
+                key={chunk.id}
+                onClick={() => onChunkClick(chunk.project_id, chunk.id)}
+                className="px-4 py-3 flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors"
+              >
                 <div className="w-16 text-sm text-slate-500">
                   {formatTime(chunk.draft_scheduled_start)}
                 </div>
@@ -264,6 +433,58 @@ function ChunkList({ chunks }) {
   )
 }
 
+// Revenue Forecast component
+function RevenueForecast({ forecast }) {
+  if (!forecast || !forecast.weeks || forecast.weeks.length === 0) {
+    return null
+  }
+
+  const formatMoney = (cents) => {
+    if (!cents) return '$0'
+    return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-slate-900 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-green-600" />
+          Revenue Forecast
+        </h3>
+        <div className="text-right">
+          <span className="text-xs text-slate-500">Total (conservative)</span>
+          <div className="text-lg font-bold text-green-600">{formatMoney(forecast.total)}</div>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        {forecast.weeks.map((week, i) => (
+          <div key={i} className="border border-slate-100 rounded-lg p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-slate-700">Week of {week.weekLabel}</span>
+              <span className="text-sm font-semibold text-green-600">{formatMoney(week.total)}</span>
+            </div>
+            <div className="space-y-1">
+              {week.phases.map((phase, j) => (
+                <div key={j} className="flex items-center justify-between text-xs">
+                  <span className="text-slate-500 truncate flex-1 mr-2">
+                    {phase.projectName} - {phase.phaseName}
+                  </span>
+                  <span className="text-slate-600">{formatMoney(phase.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-slate-400 mt-3">
+        Based on phase completion dates using low-end hour estimates at $120/hr
+      </p>
+    </div>
+  )
+}
+
 // Empty state
 function EmptyState({ onGenerate, generating }) {
   return (
@@ -287,7 +508,7 @@ function EmptyState({ onGenerate, generating }) {
       <button
         onClick={onGenerate}
         disabled={generating}
-        className="px-4 py-2 bg-brand-red text-white rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 mx-auto"
+        className="px-4 py-2 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-2 mx-auto"
       >
         {generating ? (
           <>
@@ -307,20 +528,30 @@ function EmptyState({ onGenerate, generating }) {
 
 // Main schedule page
 export default function SchedulePage() {
+  const navigate = useNavigate()
   const [draft, setDraft] = useState(null)
   const [draftChunks, setDraftChunks] = useState([])
+  const [rocks, setRocks] = useState([])
+  const [forecast, setForecast] = useState(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState(null)
   const [viewMode, setViewMode] = useState('week') // 'week' or 'list'
+  const [weekOffset, setWeekOffset] = useState(0)
 
-  // Fetch current draft
+  const handleChunkClick = (projectId, chunkId) => {
+    navigate(`/dashboard/os-beta/projects/${projectId}#chunk-${chunkId}`)
+  }
+
+  // Fetch current draft, calendar rocks, and revenue forecast
   const fetchDraft = async () => {
     try {
-      const [draftRes, chunksRes] = await Promise.all([
+      const [draftRes, chunksRes, rocksRes, forecastRes] = await Promise.all([
         fetch(`${API_BASE}/schedule/draft`),
-        fetch(`${API_BASE}/schedule/draft/chunks`)
+        fetch(`${API_BASE}/schedule/draft/chunks`),
+        fetch(`${API_BASE}/schedule/rocks`),
+        fetch(`${API_BASE}/schedule/forecast`)
       ])
 
       if (draftRes.ok) {
@@ -336,6 +567,23 @@ export default function SchedulePage() {
       } else {
         setDraftChunks([])
       }
+
+      if (rocksRes.ok) {
+        const rocksData = await rocksRes.json()
+        setRocks(rocksData)
+      } else {
+        setRocks([])
+      }
+
+      if (forecastRes.ok) {
+        const forecastData = await forecastRes.json()
+        setForecast(forecastData)
+      } else {
+        setForecast(null)
+      }
+
+      // Reset week offset when fetching new draft
+      setWeekOffset(0)
     } catch (err) {
       console.error('Failed to fetch draft:', err)
       setError(err.message)
@@ -413,8 +661,8 @@ export default function SchedulePage() {
     }
   }
 
-  // Calculate week start for calendar view
-  const weekStart = draft?.week_start
+  // Calculate week start for calendar view (with offset navigation)
+  const baseWeekStart = draft?.week_start
     ? new Date(draft.week_start)
     : (() => {
         const now = new Date()
@@ -424,6 +672,14 @@ export default function SchedulePage() {
         monday.setHours(0, 0, 0, 0)
         return monday
       })()
+
+  // Apply week offset for navigation
+  const weekStart = new Date(baseWeekStart)
+  weekStart.setDate(weekStart.getDate() + weekOffset * 7)
+
+  const handleWeekChange = (delta) => {
+    setWeekOffset(prev => prev + delta)
+  }
 
   if (loading) {
     return (
@@ -491,10 +747,21 @@ export default function SchedulePage() {
             publishing={publishing}
           />
 
+          {/* Revenue Forecast */}
+          <RevenueForecast forecast={forecast} />
+
           {viewMode === 'week' ? (
-            <WeekView draftChunks={draftChunks} weekStart={weekStart} />
+            <WeekView
+              draftChunks={draftChunks}
+              rocks={rocks}
+              lunchBreaks={draft?.lunch_breaks || []}
+              weekStart={weekStart}
+              onWeekChange={handleWeekChange}
+              weekOffset={weekOffset}
+              onChunkClick={handleChunkClick}
+            />
           ) : (
-            <ChunkList chunks={draftChunks} />
+            <ChunkList chunks={draftChunks} onChunkClick={handleChunkClick} />
           )}
         </>
       )}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { FileText, ArrowRight, Check, Clock, AlertCircle } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { FileText, ArrowRight, Check, Clock, AlertCircle, ExternalLink, Edit3 } from 'lucide-react'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -23,7 +23,7 @@ function StatusBadge({ status }) {
   )
 }
 
-function ProposalCard({ proposal, onConvert }) {
+function ProposalCard({ proposal, projectExists, onConvert }) {
   const [converting, setConverting] = useState(false)
   const rate = 120 // $120/hr
 
@@ -46,6 +46,11 @@ function ProposalCard({ proposal, onConvert }) {
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold text-slate-900 truncate">{proposal.projectName}</h3>
             <StatusBadge status={proposal.status} />
+            {projectExists && (
+              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                Project Created
+              </span>
+            )}
           </div>
           <p className="text-sm text-slate-500 truncate">{proposal.clientName}</p>
           <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
@@ -56,16 +61,29 @@ function ProposalCard({ proposal, onConvert }) {
         </div>
 
         <div className="flex items-center gap-2">
-          {proposal.status === 'accepted' ? (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <Check className="w-4 h-4" />
-              Converted
-            </span>
+          {/* Edit proposal in OS Beta editor */}
+          <Link
+            to={`/dashboard/os-beta/proposals/${proposal.id}/edit`}
+            className="flex items-center gap-2 px-3 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            title="Edit proposal in sandbox"
+          >
+            <Edit3 className="w-4 h-4" />
+            Edit
+          </Link>
+
+          {projectExists ? (
+            <Link
+              to={`/dashboard/os-beta/projects/${proposal.id}`}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Visit Project
+              <ExternalLink className="w-4 h-4" />
+            </Link>
           ) : (
             <button
               onClick={handleConvert}
               disabled={converting}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-red text-white rounded-lg hover:bg-brand-red/90 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/90 disabled:opacity-50 transition-colors"
             >
               {converting ? (
                 <>
@@ -110,25 +128,37 @@ function ProposalCard({ proposal, onConvert }) {
 
 export default function ProposalsPage() {
   const [proposals, setProposals] = useState([])
+  const [projectIds, setProjectIds] = useState(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all') // all, draft, sent, accepted
   const navigate = useNavigate()
 
   useEffect(() => {
-    loadProposals()
+    loadData()
   }, [])
 
-  const loadProposals = async () => {
+  const loadData = async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/proposals`)
-      if (!res.ok) throw new Error('Failed to load proposals')
-      const data = await res.json()
-      setProposals(data)
+      // Fetch both proposals and projects in parallel
+      const [proposalsRes, projectsRes] = await Promise.all([
+        fetch(`${API_BASE}/proposals`),
+        fetch(`${API_BASE}/projects`)
+      ])
+
+      if (!proposalsRes.ok) throw new Error('Failed to load proposals')
+      const proposalsData = await proposalsRes.json()
+      setProposals(proposalsData)
+
+      // Get project IDs to check which proposals have been converted
+      if (projectsRes.ok) {
+        const projectsData = await projectsRes.json()
+        setProjectIds(new Set(projectsData.map(p => p.id)))
+      }
     } catch (err) {
-      console.error('Failed to load proposals:', err)
+      console.error('Failed to load data:', err)
       setError(err.message)
     }
     setLoading(false)
@@ -149,17 +179,27 @@ export default function ProposalsPage() {
         }
         throw new Error(data.error)
       }
-      // Navigate to the new project
+      // Update project IDs set and navigate to the new project
+      setProjectIds(prev => new Set([...prev, data.project.id]))
       navigate(`/dashboard/os-beta/projects/${data.project.id}`)
     } catch (err) {
       alert(`Failed to convert: ${err.message}`)
     }
   }
 
-  const filteredProposals = proposals.filter(p => {
-    if (filter === 'all') return true
-    return p.status === filter
-  })
+  const filteredProposals = proposals
+    .filter(p => {
+      if (filter === 'all') return true
+      return p.status === filter
+    })
+    // Sort accepted (converted) proposals to the top
+    .sort((a, b) => {
+      const aConverted = projectIds.has(a.id) || a.status === 'accepted'
+      const bConverted = projectIds.has(b.id) || b.status === 'accepted'
+      if (aConverted && !bConverted) return -1
+      if (!aConverted && bConverted) return 1
+      return 0
+    })
 
   if (loading) {
     return (
@@ -237,6 +277,7 @@ export default function ProposalsPage() {
             <ProposalCard
               key={proposal.id}
               proposal={proposal}
+              projectExists={projectIds.has(proposal.id)}
               onConvert={handleConvert}
             />
           ))}

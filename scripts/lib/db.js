@@ -179,7 +179,7 @@ async function getChunks(projectId, options = {}) {
     rows = await sql`
       SELECT * FROM chunks
       WHERE project_id = ${projectId}
-      ORDER BY phase_name ASC NULLS LAST, created_at ASC
+      ORDER BY phase_order ASC NULLS LAST, created_at ASC
     `
   }
 
@@ -409,6 +409,15 @@ async function logTime(entry) {
   await touchProject(project_id)
 
   return getTimeLog(id)
+}
+
+/**
+ * Delete a time log entry
+ * @param {string} id - Time log ID
+ * @returns {Promise<void>}
+ */
+async function deleteTimeLog(id) {
+  await sql`DELETE FROM time_logs WHERE id = ${id}`
 }
 
 /**
@@ -662,12 +671,28 @@ async function getStats() {
       AND paid_at >= date_trunc('year', CURRENT_DATE)
   `
 
-  // MRR (hosting clients)
-  // This is a placeholder - you'd need actual hosting fee data
+  // MRR (hosting clients) - calculated from actual recurring invoices under $100
+  // First get recurring amounts (appear 2+ times) under $100
   const mrrResult = await sql`
-    SELECT COUNT(*) * 3900 as total
-    FROM projects
-    WHERE billing_platform = 'bonsai_legacy' AND status = 'active'
+    WITH hosting_amounts AS (
+      SELECT total
+      FROM invoices
+      GROUP BY total
+      HAVING COUNT(*) >= 2 AND total < 10000
+    ),
+    active_hosting_clients AS (
+      SELECT DISTINCT client_id
+      FROM projects
+      WHERE billing_platform = 'bonsai_legacy' AND status = 'active'
+    ),
+    latest_hosting_invoice AS (
+      SELECT DISTINCT ON (i.client_id) i.client_id, i.total
+      FROM invoices i
+      INNER JOIN hosting_amounts ha ON i.total = ha.total
+      INNER JOIN active_hosting_clients ahc ON i.client_id = ahc.client_id
+      ORDER BY i.client_id, i.created_at DESC
+    )
+    SELECT COALESCE(SUM(total), 0) as total FROM latest_hosting_invoice
   `
 
   return {
@@ -691,9 +716,9 @@ async function getStats() {
 async function search(query) {
   const searchTerm = `%${query}%`
 
-  const [projects, invoiceLineItems] = await Promise.all([
+  const [projects, invoices, clients] = await Promise.all([
     sql`
-      SELECT id, name, description, client_id, status
+      SELECT id, name, description, client_id, status, 'project' as type
       FROM projects
       WHERE name ILIKE ${searchTerm}
         OR description ILIKE ${searchTerm}
@@ -701,14 +726,38 @@ async function search(query) {
       LIMIT 20
     `,
     sql`
-      SELECT id, client_id, total, status, line_items
+      SELECT id, client_id, total, status, line_items, 'invoice' as type
       FROM invoices
-      WHERE line_items::text ILIKE ${searchTerm}
+      WHERE id ILIKE ${searchTerm}
+        OR line_items::text ILIKE ${searchTerm}
+        OR client_id ILIKE ${searchTerm}
+      LIMIT 20
+    `,
+    sql`
+      SELECT id, data->>'name' as name, data->>'company' as company, data->>'email' as email, 'client' as type
+      FROM clients
+      WHERE data->>'name' ILIKE ${searchTerm}
+        OR data->>'company' ILIKE ${searchTerm}
+        OR data->>'email' ILIKE ${searchTerm}
+        OR id ILIKE ${searchTerm}
       LIMIT 20
     `
   ])
 
-  return { projects, invoices: invoiceLineItems }
+  return {
+    query,
+    counts: {
+      total: projects.length + invoices.length + clients.length,
+      projects: projects.length,
+      invoices: invoices.length,
+      clients: clients.length
+    },
+    results: {
+      projects,
+      invoices,
+      clients
+    }
+  }
 }
 
 // ============================================================================
@@ -780,6 +829,7 @@ module.exports = {
   createTimeLog,
   stopTimeLog,
   logTime,
+  deleteTimeLog,
   getUnbilledTime,
   // Invoices
   getInvoices,

@@ -23,10 +23,12 @@ require('dotenv').config()
 const sql = neon(process.env.DATABASE_URL)
 
 // Configuration
-const WORK_START_HOUR = 9    // 9 AM
-const WORK_END_HOUR = 17     // 5 PM
+const WORK_START_HOUR = 12   // 12 PM (noon)
+const WORK_END_HOUR = 20     // 8 PM (allows slots through 7pm)
 const SLOT_DURATION = 60     // minutes per slot
 const MAX_HOURS_PER_DAY = 6  // Leave buffer for meetings/breaks
+const DEFAULT_LUNCH_HOUR = 15 // Default lunch at 3pm (center of 12-7:30pm workday)
+const LUNCH_FLEX_RANGE = 2   // Lunch can move up to 2 hours later (so 3pm-5pm range)
 
 // ============ GOOGLE CALENDAR HELPERS ============
 
@@ -147,19 +149,13 @@ function getWeekBounds(weeksFromNow = 1) {
 
 function parseRocks(events) {
   // Convert calendar events to blocked time ranges
+  // Only events with specific start/end times are rocks
+  // All-day events are ignored (they're usually reminders, not actual time blocks)
   const rocks = []
 
   for (const event of events) {
+    // Skip all-day events - they don't block time slots
     if (!event.start?.dateTime || !event.end?.dateTime) {
-      // All-day event - block the whole day
-      if (event.start?.date) {
-        const date = new Date(event.start.date)
-        rocks.push({
-          start: new Date(date.setHours(WORK_START_HOUR, 0, 0, 0)),
-          end: new Date(date.setHours(WORK_END_HOUR, 0, 0, 0)),
-          title: event.summary || 'All-day event'
-        })
-      }
       continue
     }
 
@@ -219,76 +215,247 @@ function markRocksInSlots(slots, rocks) {
 
 function scheduleChunks(chunks, slots) {
   const scheduled = []
-  let slotIndex = 0
-  let hoursScheduledToday = 0
-  let currentDay = null
+  const lunchBreaks = []
 
-  // Sort chunks by priority (higher first), then by project last_touched
-  const sortedChunks = [...chunks].sort((a, b) => {
+  // Group chunks by project, maintaining phase order within each project
+  const projectMap = new Map()
+  for (const chunk of chunks) {
+    if (!projectMap.has(chunk.project_id)) {
+      projectMap.set(chunk.project_id, {
+        id: chunk.project_id,
+        name: chunk.project_name,
+        priority: chunk.priority || 0,
+        lastTouched: chunk.last_touched_at,
+        chunks: [],
+        currentIndex: 0
+      })
+    }
+    projectMap.get(chunk.project_id).chunks.push(chunk)
+  }
+
+  // Sort projects by priority (higher first), then by last_touched (more recent first)
+  const projects = Array.from(projectMap.values()).sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority
-    return new Date(b.last_touched_at || 0) - new Date(a.last_touched_at || 0)
+    return new Date(b.lastTouched || 0) - new Date(a.lastTouched || 0)
   })
 
-  for (const chunk of sortedChunks) {
-    const hoursNeeded = chunk.hours
-    let hoursAssigned = 0
-    const scheduledSlots = []
+  console.log(`\nInterweaving ${projects.length} projects:`)
+  for (const p of projects) {
+    console.log(`  - ${p.name} (priority ${p.priority}, ${p.chunks.length} chunks)`)
+  }
 
-    while (hoursAssigned < hoursNeeded && slotIndex < slots.length) {
-      const slot = slots[slotIndex]
+  // Calculate time allocation per project based on priority
+  const totalPriority = projects.reduce((sum, p) => sum + Math.max(1, p.priority + 2), 0)
+  for (const p of projects) {
+    p.slotsPerRound = Math.max(1, Math.round((Math.max(1, p.priority + 2) / totalPriority) * 6))
+    console.log(`    Allocation: ${p.slotsPerRound} hours per round`)
+  }
 
-      // Track daily hours
+  // Track daily usage across all scheduling
+  const dailyHours = new Map()      // day string -> hours scheduled
+  const dailyLunchTaken = new Map() // day string -> boolean
+  const dailyHoursBeforeLunch = new Map() // day string -> hours worked before lunch
+
+  // Helper to find consecutive available slots for a chunk
+  function findAndAssignSlots(hoursNeeded) {
+    let consecutiveSlots = []
+    let currentDayStr = null
+
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i]
       const slotDay = slot.start.toDateString()
-      if (currentDay !== slotDay) {
-        currentDay = slotDay
-        hoursScheduledToday = 0
+      const slotHour = slot.start.getHours()
+
+      // Reset consecutive slots when day changes
+      if (currentDayStr !== slotDay) {
+        consecutiveSlots = []
+        currentDayStr = slotDay
       }
 
-      // Skip if slot is blocked or we've hit daily max
-      if (!slot.available || hoursScheduledToday >= MAX_HOURS_PER_DAY) {
-        slotIndex++
+      // Skip unavailable slots
+      if (!slot.available) {
+        consecutiveSlots = []
         continue
       }
 
-      // Assign this slot
-      slot.available = false
-      slot.chunk = chunk
-      scheduledSlots.push(slot)
-      hoursAssigned++
-      hoursScheduledToday++
-      slotIndex++
+      // Check daily limit
+      const dayHours = dailyHours.get(slotDay) || 0
+      if (dayHours >= MAX_HOURS_PER_DAY) {
+        consecutiveSlots = []
+        continue
+      }
+
+      // Check if we need to take lunch before this slot
+      const lunchTaken = dailyLunchTaken.get(slotDay) || false
+      const hoursBeforeLunch = dailyHoursBeforeLunch.get(slotDay) || 0
+
+      if (!lunchTaken) {
+        const shouldTakeLunch = (hoursBeforeLunch >= 3 && slotHour >= DEFAULT_LUNCH_HOUR) ||
+                                (slotHour >= DEFAULT_LUNCH_HOUR + LUNCH_FLEX_RANGE)
+
+        if (shouldTakeLunch) {
+          // This slot becomes lunch
+          slot.available = false
+          slot.isLunch = true
+          dailyLunchTaken.set(slotDay, true)
+          lunchBreaks.push({ day: slotDay, start: slot.start, end: slot.end })
+          consecutiveSlots = []
+          continue
+        }
+      }
+
+      // This slot is available for work
+      consecutiveSlots.push({ slot, index: i, day: slotDay })
+
+      // Check if we have enough consecutive slots
+      if (consecutiveSlots.length >= hoursNeeded) {
+        // Verify all slots are on same day and consecutive
+        const firstDay = consecutiveSlots[0].day
+        const allSameDay = consecutiveSlots.every(s => s.day === firstDay)
+
+        if (allSameDay) {
+          // Assign these slots
+          const slotsToUse = consecutiveSlots.slice(0, hoursNeeded)
+          for (const { slot: s, day } of slotsToUse) {
+            s.available = false
+            dailyHours.set(day, (dailyHours.get(day) || 0) + 1)
+            if (!dailyLunchTaken.get(day)) {
+              dailyHoursBeforeLunch.set(day, (dailyHoursBeforeLunch.get(day) || 0) + 1)
+            }
+          }
+          return slotsToUse.map(s => s.slot)
+        } else {
+          // Slots span multiple days - this shouldn't happen with daily reset
+          consecutiveSlots = [consecutiveSlots[consecutiveSlots.length - 1]]
+        }
+      }
     }
 
-    if (scheduledSlots.length > 0) {
-      scheduled.push({
-        chunk,
-        start: scheduledSlots[0].start,
-        end: scheduledSlots[scheduledSlots.length - 1].end,
-        slots: scheduledSlots
-      })
-    } else {
-      console.warn(`Could not schedule chunk: ${chunk.name} (${chunk.hours}h)`)
+    return null // Could not find enough slots
+  }
+
+  // Round-robin through projects until all chunks are scheduled or no slots remain
+  // Key: Don't skip chunks - if a chunk can't be scheduled, the project is blocked
+  // until that chunk can fit. This maintains chronological order within projects.
+  let activeProjects = projects.filter(p => p.currentIndex < p.chunks.length)
+  let lastScheduledCount = -1
+
+  while (activeProjects.length > 0) {
+    // Check if we made progress last round (avoid infinite loop)
+    if (scheduled.length === lastScheduledCount) {
+      break // No progress, no more available slots
+    }
+    lastScheduledCount = scheduled.length
+
+    for (const project of activeProjects) {
+      let hoursThisRound = 0
+      let projectBlocked = false
+
+      while (hoursThisRound < project.slotsPerRound &&
+             project.currentIndex < project.chunks.length &&
+             !projectBlocked) {
+
+        const chunk = project.chunks[project.currentIndex]
+        const assignedSlots = findAndAssignSlots(chunk.hours)
+
+        if (!assignedSlots) {
+          // No slots available for this chunk - project is blocked
+          // DON'T skip to next chunk - maintain order
+          projectBlocked = true
+          break
+        }
+
+        // Mark slots with chunk reference
+        for (const slot of assignedSlots) {
+          slot.chunk = chunk
+        }
+
+        scheduled.push({
+          chunk,
+          start: assignedSlots[0].start,
+          end: assignedSlots[assignedSlots.length - 1].end,
+          slots: assignedSlots
+        })
+
+        project.currentIndex++
+        hoursThisRound += chunk.hours
+      }
+    }
+
+    // Update active projects - only those with remaining chunks that made progress
+    activeProjects = projects.filter(p => p.currentIndex < p.chunks.length)
+  }
+
+  // Report unscheduled chunks by project
+  for (const project of projects) {
+    const remaining = project.chunks.length - project.currentIndex
+    if (remaining > 0) {
+      console.warn(`${project.name}: ${remaining} chunks could not be scheduled (blocked at: ${project.chunks[project.currentIndex]?.name})`)
     }
   }
 
-  return scheduled
+  // Add lunch breaks to days that have available time but no lunch scheduled yet
+  // Group slots by day
+  const slotsByDay = new Map()
+  for (const slot of slots) {
+    const dayStr = slot.start.toDateString()
+    if (!slotsByDay.has(dayStr)) {
+      slotsByDay.set(dayStr, [])
+    }
+    slotsByDay.get(dayStr).push(slot)
+  }
+
+  // For each day, if no lunch break exists and there are available slots, add one
+  for (const [dayStr, daySlots] of slotsByDay) {
+    if (dailyLunchTaken.get(dayStr)) continue // Already has lunch
+
+    // Find available slots around lunch time
+    const availableSlots = daySlots.filter(s => s.available && !s.isLunch)
+    if (availableSlots.length === 0) continue // Day is fully blocked
+
+    // Find the best slot for lunch (closest to DEFAULT_LUNCH_HOUR)
+    let bestSlot = null
+    let bestDistance = Infinity
+
+    for (const slot of availableSlots) {
+      const slotHour = slot.start.getHours()
+      const distance = Math.abs(slotHour - DEFAULT_LUNCH_HOUR)
+      if (distance < bestDistance) {
+        bestDistance = distance
+        bestSlot = slot
+      }
+    }
+
+    if (bestSlot) {
+      bestSlot.available = false
+      bestSlot.isLunch = true
+      dailyLunchTaken.set(dayStr, true)
+      lunchBreaks.push({ day: dayStr, start: bestSlot.start, end: bestSlot.end })
+    }
+  }
+
+  console.log(`\nScheduled ${lunchBreaks.length} lunch breaks`)
+
+  return { scheduled, lunchBreaks }
 }
 
 // ============ DATABASE OPERATIONS ============
 
 async function fetchPendingChunks() {
+  // Order by project, then by phase_order within each project
+  // This ensures chunks maintain their phase sequence (phase_order set from proposal)
   const rows = await sql`
     SELECT c.*, p.name as project_name, p.client_id, p.priority, p.last_touched_at
     FROM chunks c
     JOIN projects p ON c.project_id = p.id
     WHERE c.status = 'pending'
       AND p.status = 'active'
-    ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST
+    ORDER BY c.project_id, c.phase_order ASC NULLS LAST, c.created_at ASC
   `
   return rows
 }
 
-async function saveDraftSchedule(scheduled, weekStart, weekEnd, rocksAvoided) {
+async function saveDraftSchedule(scheduled, weekStart, weekEnd, rocksAvoided, lunchBreaks = []) {
   // Generate draft ID
   const draftId = `draft-${Date.now().toString(36)}`
 
@@ -298,16 +465,24 @@ async function saveDraftSchedule(scheduled, weekStart, weekEnd, rocksAvoided) {
   // Expire any existing draft
   await sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`
 
+  // Format lunch breaks for storage
+  const lunchBreaksJson = JSON.stringify(lunchBreaks.map(lb => ({
+    day: lb.day,
+    start: lb.start.toISOString(),
+    end: lb.end.toISOString()
+  })))
+
   // Save draft metadata
   await sql`
-    INSERT INTO schedule_drafts (id, week_start, week_end, total_hours, chunk_count, rocks_avoided)
+    INSERT INTO schedule_drafts (id, week_start, week_end, total_hours, chunk_count, rocks_avoided, lunch_breaks)
     VALUES (
       ${draftId},
       ${weekStart.toISOString().split('T')[0]},
       ${weekEnd.toISOString().split('T')[0]},
       ${scheduled.reduce((sum, s) => sum + s.chunk.hours, 0)},
       ${scheduled.length},
-      ${rocksAvoided}
+      ${rocksAvoided},
+      ${lunchBreaksJson}::jsonb
     )
   `
 
@@ -465,9 +640,11 @@ async function main() {
     return
   }
 
-  // Get week offset
+  // Get week offset and count
   const weekIndex = args.indexOf('--week')
-  const weeksFromNow = weekIndex >= 0 ? parseInt(args[weekIndex + 1]) || 1 : 1
+  const weeksIndex = args.indexOf('--weeks')
+  const startWeek = weekIndex >= 0 ? parseInt(args[weekIndex + 1]) || 1 : 1
+  const weekCount = weeksIndex >= 0 ? parseInt(args[weeksIndex + 1]) || 1 : 1
 
   console.log('')
 
@@ -480,11 +657,16 @@ async function main() {
     return
   }
 
-  // Get week bounds
-  const { monday, friday } = getWeekBounds(weeksFromNow)
-  console.log(`\nScheduling for: ${monday.toLocaleDateString()} - ${friday.toLocaleDateString()}`)
+  // Calculate total hours needed
+  const totalHoursNeeded = chunks.reduce((sum, c) => sum + c.hours, 0)
+  console.log(`Total hours to schedule: ${totalHoursNeeded}`)
 
-  // Fetch calendar "rocks"
+  // Get bounds for all weeks
+  const { monday: firstMonday } = getWeekBounds(startWeek)
+  const { friday: lastFriday } = getWeekBounds(startWeek + weekCount - 1)
+  console.log(`\nScheduling for: ${firstMonday.toLocaleDateString()} - ${lastFriday.toLocaleDateString()} (${weekCount} week${weekCount > 1 ? 's' : ''})`)
+
+  // Fetch calendar "rocks" for entire period
   let rocks = []
   let rocksAvoided = 0
 
@@ -493,7 +675,7 @@ async function main() {
     const calendarId = process.env.GOOGLE_REFERENCE_CALENDAR_ID || 'primary'
 
     console.log('\nFetching calendar events (rocks)...')
-    const events = await fetchCalendarEvents(calendarId, monday, friday, accessToken)
+    const events = await fetchCalendarEvents(calendarId, firstMonday, lastFriday, accessToken)
     rocks = parseRocks(events)
     console.log(`Found ${rocks.length} calendar events to avoid.`)
 
@@ -511,21 +693,27 @@ async function main() {
     console.log('Proceeding without rock detection...\n')
   }
 
-  // Generate time slots
-  const slots = generateTimeSlots(monday, friday)
-  console.log(`\nGenerated ${slots.length} hourly slots for the week.`)
+  // Generate time slots for all weeks
+  let allSlots = []
+  for (let w = 0; w < weekCount; w++) {
+    const { monday, friday } = getWeekBounds(startWeek + w)
+    const weekSlots = generateTimeSlots(monday, friday)
+    allSlots = allSlots.concat(weekSlots)
+  }
+  console.log(`\nGenerated ${allSlots.length} hourly slots for ${weekCount} week${weekCount > 1 ? 's' : ''}.`)
 
   // Mark rocks
-  rocksAvoided = markRocksInSlots(slots, rocks)
-  const availableSlots = slots.filter(s => s.available).length
+  rocksAvoided = markRocksInSlots(allSlots, rocks)
+  const availableSlots = allSlots.filter(s => s.available).length
   console.log(`Available slots after avoiding rocks: ${availableSlots}`)
+  console.log(`Estimated capacity: ~${Math.floor(availableSlots * 0.75)} hours (with 6h/day max)`)
 
-  // Schedule chunks
-  const scheduled = scheduleChunks(chunks, slots)
-  console.log(`\nScheduled ${scheduled.length} chunks.`)
+  // Schedule chunks (with lunch breaks)
+  const { scheduled, lunchBreaks } = scheduleChunks(chunks, allSlots)
+  console.log(`\nScheduled ${scheduled.length} chunks (${scheduled.reduce((s, c) => s + c.chunk.hours, 0)} hours).`)
 
-  // Save draft
-  const draftId = await saveDraftSchedule(scheduled, monday, friday, rocksAvoided)
+  // Save draft (including lunch breaks)
+  const draftId = await saveDraftSchedule(scheduled, firstMonday, lastFriday, rocksAvoided, lunchBreaks)
 
   // Print summary
   console.log('\n--- DRAFT SCHEDULE ---\n')

@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Server, DollarSign, Users } from 'lucide-react'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
+// Hosting invoices are recurring amounts under $100
+const HOSTING_MAX = 10000
+
 export default function HostingPage() {
   const [projects, setProjects] = useState([])
-  const [stats, setStats] = useState(null)
+  const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -15,19 +18,48 @@ export default function HostingPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [projectsRes, statsRes] = await Promise.all([
+      const [projectsRes, invoicesRes] = await Promise.all([
         fetch(`${API_BASE}/projects?billing_platform=bonsai_legacy`),
-        fetch(`${API_BASE}/stats`)
+        fetch(`${API_BASE}/invoices`)
       ])
       const projectsData = await projectsRes.json()
-      const statsData = await statsRes.json()
+      const invoicesData = await invoicesRes.json()
       setProjects(projectsData)
-      setStats(statsData)
+      setInvoices(invoicesData)
     } catch (err) {
       console.error('Failed to load data:', err)
     }
     setLoading(false)
   }
+
+  // Detect hosting amounts (recurring under $100)
+  const hostingAmounts = useMemo(() => {
+    const amountCounts = {}
+    invoices.forEach(inv => {
+      amountCounts[inv.total] = (amountCounts[inv.total] || 0) + 1
+    })
+    return new Set(
+      Object.entries(amountCounts)
+        .filter(([amount, count]) => count >= 2 && parseInt(amount) < HOSTING_MAX)
+        .map(([amount]) => parseInt(amount))
+    )
+  }, [invoices])
+
+  // Get the most recent hosting fee per client
+  const clientFees = useMemo(() => {
+    const fees = {}
+    // Sort invoices by date descending to get most recent first
+    const sortedInvoices = [...invoices]
+      .filter(inv => hostingAmounts.has(inv.total))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    sortedInvoices.forEach(inv => {
+      if (!fees[inv.client_id]) {
+        fees[inv.client_id] = inv.total
+      }
+    })
+    return fees
+  }, [invoices, hostingAmounts])
 
   const formatMoney = (cents) => {
     if (!cents) return '$0'
@@ -36,6 +68,13 @@ export default function HostingPage() {
 
   const activeProjects = projects.filter(p => p.status === 'active')
   const inactiveProjects = projects.filter(p => p.status !== 'active')
+
+  // Calculate actual MRR from client fees
+  const actualMRR = useMemo(() => {
+    return activeProjects.reduce((sum, project) => {
+      return sum + (clientFees[project.client_id] || 0)
+    }, 0)
+  }, [activeProjects, clientFees])
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -50,7 +89,7 @@ export default function HostingPage() {
           <div>
             <p className="text-blue-100 text-sm">Monthly Recurring Revenue</p>
             <p className="text-4xl font-bold">
-              {stats ? formatMoney(stats.mrr) : '...'}
+              {loading ? '...' : formatMoney(actualMRR)}
             </p>
           </div>
         </div>
@@ -88,19 +127,22 @@ export default function HostingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {activeProjects.map(project => (
-                  <tr key={project.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-slate-900">
-                      {project.client_id}
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">
-                      {project.name}
-                    </td>
-                    <td className="px-4 py-3 text-right text-slate-600">
-                      $39.00
-                    </td>
-                  </tr>
-                ))}
+                {activeProjects.map(project => {
+                  const fee = clientFees[project.client_id] || 0
+                  return (
+                    <tr key={project.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3 font-medium text-slate-900">
+                        {project.client_id}
+                      </td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {project.name}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-600">
+                        {fee > 0 ? formatMoney(fee) : <span className="text-slate-400">—</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200">
@@ -108,7 +150,7 @@ export default function HostingPage() {
                     Total MRR
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-900">
-                    {formatMoney(activeProjects.length * 3900)}
+                    {formatMoney(actualMRR)}
                   </td>
                 </tr>
               </tfoot>

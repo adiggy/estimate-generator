@@ -259,11 +259,9 @@ app.delete('/api/os-beta/projects/:id', async (req, res) => {
 // Chunks
 app.get('/api/os-beta/chunks', async (req, res) => {
   try {
-    const filters = {
-      projectId: req.query.project_id,
-      status: req.query.status
-    };
-    const chunks = await db.getChunks(filters);
+    const projectId = req.query.project_id;
+    const options = { status: req.query.status };
+    const chunks = await db.getChunks(projectId, options);
     res.json(chunks);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -325,6 +323,15 @@ app.get('/api/os-beta/time-logs', async (req, res) => {
       projectId: req.query.project_id,
       invoiced: req.query.invoiced === 'true' ? true : req.query.invoiced === 'false' ? false : undefined
     };
+
+    // If fetching unbilled time for a specific project, use the getUnbilledTime function
+    // which includes project_rate and only finalized entries with duration_minutes
+    if (filters.projectId && filters.invoiced === false) {
+      const unbilledData = await db.getUnbilledTime(filters.projectId);
+      res.json(unbilledData); // Returns { logs, totalMinutes, totalAmount }
+      return;
+    }
+
     const logs = await db.getTimeLogs(filters);
     res.json(logs);
   } catch (err) {
@@ -422,10 +429,26 @@ app.put('/api/os-beta/time-logs/:id', async (req, res) => {
       return res.json(updated);
     }
 
+    if (action === 'set_time') {
+      // Manually set the accumulated time (for editing timer while running)
+      const newSeconds = req.body.accumulated_seconds || 0;
+      // Reset last_resumed_at to now so the timer continues from this new base
+      await db.sql`
+        UPDATE time_logs
+        SET accumulated_seconds = ${newSeconds},
+            last_resumed_at = NOW(),
+            updated_at = NOW()
+        WHERE id = ${id}
+      `;
+      const updated = await db.getTimeLog(id);
+      return res.json(updated);
+    }
+
     if (action === 'finalize') {
-      // Calculate duration in minutes and finalize
+      // Calculate duration in minutes and round UP to nearest 15 minutes
       const accumulated = current.accumulated_seconds || 0;
-      const durationMinutes = Math.round(accumulated / 60);
+      const rawMinutes = accumulated / 60;
+      const durationMinutes = Math.ceil(rawMinutes / 15) * 15; // Round up to nearest 15
       await db.sql`
         UPDATE time_logs
         SET status = 'finalized',
@@ -472,7 +495,18 @@ app.get('/api/os-beta/invoices', async (req, res) => {
 
 app.post('/api/os-beta/invoices', async (req, res) => {
   try {
-    const invoice = await db.createInvoice(req.body);
+    // Generate ID if not provided
+    const invoiceData = {
+      ...req.body,
+      id: req.body.id || db.generateId('inv')
+    };
+    const invoice = await db.createInvoice(invoiceData);
+
+    // Mark the associated time logs as invoiced
+    if (req.body.time_log_ids && req.body.time_log_ids.length > 0) {
+      await db.markTimeLogsInvoiced(req.body.time_log_ids, invoice.id);
+    }
+
     res.json(invoice);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -494,7 +528,14 @@ app.get('/api/os-beta/invoices/:id', async (req, res) => {
 
 app.put('/api/os-beta/invoices/:id', async (req, res) => {
   try {
-    const invoice = await db.updateInvoice(req.params.id, req.body);
+    const { time_log_ids, ...updateData } = req.body;
+    const invoice = await db.updateInvoice(req.params.id, updateData);
+
+    // If time_log_ids provided, mark them as invoiced
+    if (time_log_ids && time_log_ids.length > 0) {
+      await db.markTimeLogsInvoiced(time_log_ids, req.params.id);
+    }
+
     res.json(invoice);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -530,12 +571,12 @@ app.get('/api/os-beta/search', async (req, res) => {
   }
 });
 
-// OS Proposals - fetches from the proposals table
+// OS Proposals - FIREWALLED: fetches from os_beta_proposals table (separate from live)
 app.get('/api/os-beta/proposals', async (req, res) => {
   try {
     const rows = await db.sql`
       SELECT id, data, created_at, updated_at
-      FROM proposals
+      FROM os_beta_proposals
       ORDER BY updated_at DESC
     `;
     const proposals = rows.map(row => {
@@ -560,11 +601,59 @@ app.get('/api/os-beta/proposals', async (req, res) => {
   }
 });
 
-// Convert proposal to project with chunks
+// Get single proposal from OS Beta (firewalled)
+app.get('/api/os-beta/proposals/:id', async (req, res) => {
+  try {
+    const rows = await db.sql`
+      SELECT id, data, created_at, updated_at
+      FROM os_beta_proposals
+      WHERE id = ${req.params.id}
+    `;
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+    const row = rows[0];
+    const data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data;
+    res.json({ id: row.id, ...data });
+  } catch (err) {
+    console.error('Get proposal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update proposal in OS Beta (firewalled - changes do NOT affect live)
+app.put('/api/os-beta/proposals/:id', async (req, res) => {
+  try {
+    const proposal = req.body;
+    await db.sql`
+      UPDATE os_beta_proposals
+      SET data = ${JSON.stringify(proposal)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${req.params.id}
+    `;
+    res.json({ success: true, id: req.params.id });
+  } catch (err) {
+    console.error('Update proposal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete proposal from OS Beta (firewalled - does NOT affect live)
+app.delete('/api/os-beta/proposals/:id', async (req, res) => {
+  try {
+    await db.sql`DELETE FROM os_beta_proposals WHERE id = ${req.params.id}`;
+    res.json({ success: true, id: req.params.id });
+  } catch (err) {
+    console.error('Delete proposal error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Convert proposal to project with chunks (reads from os_beta_proposals)
 app.post('/api/os-beta/proposals/:id/convert', async (req, res) => {
   try {
-    // Get the proposal
-    const rows = await db.sql`SELECT data FROM proposals WHERE id = ${req.params.id}`;
+    // Get the proposal from OS Beta table (firewalled from live)
+    const rows = await db.sql`SELECT data FROM os_beta_proposals WHERE id = ${req.params.id}`;
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Proposal not found' });
     }
@@ -604,6 +693,7 @@ app.post('/api/os-beta/proposals/:id/convert', async (req, res) => {
 
     // Create chunks from phases
     const chunks = [];
+    let phaseOrder = 0;
     for (const phase of (proposal.phases || [])) {
       if (phase.optional) continue;
 
@@ -641,17 +731,24 @@ app.post('/api/os-beta/proposals/:id/convert', async (req, res) => {
           id: db.generateId('chk'),
           project_id: projectId,
           phase_name: phase.name,
+          phase_order: phaseOrder,
           name: chunkName,
           description: i === 0 ? phase.description : `Continuation of ${phase.name}`,
           hours: chunkSizes[i]
         });
         chunks.push(chunk);
       }
+      phaseOrder++;
     }
 
-    // NOTE: We do NOT update the proposal status here to maintain
-    // a clean firewall between the live proposals and OS beta.
-    // The project.proposal_id link is the only connection.
+    // Update proposal status to "accepted" since it's now a project
+    proposal.status = 'accepted';
+    await db.sql`
+      UPDATE proposals
+      SET data = ${JSON.stringify(proposal)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${req.params.id}
+    `;
 
     res.json({
       project,
@@ -730,6 +827,7 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
     });
 
     const tokens = await tokenResponse.json();
+    console.log('Google token response:', JSON.stringify(tokens, null, 2));
     if (tokens.error) throw new Error(tokens.error_description || tokens.error);
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
@@ -969,6 +1067,234 @@ app.post('/api/os-beta/schedule/clear', async (req, res) => {
     await db.sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`;
     res.json({ success: true });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Revenue Forecast
+// Calculates projected revenue based on phase completion dates and proposal estimates
+app.get('/api/os-beta/schedule/forecast', async (req, res) => {
+  try {
+    // Get all projects with proposal_id that have scheduled/draft-scheduled chunks
+    const projects = await db.sql`
+      SELECT DISTINCT p.id, p.name, p.proposal_id, p.rate
+      FROM projects p
+      JOIN chunks c ON c.project_id = p.id
+      WHERE p.proposal_id IS NOT NULL
+        AND p.status = 'active'
+        AND (c.draft_scheduled_start IS NOT NULL OR c.scheduled_start IS NOT NULL)
+    `;
+
+    if (projects.length === 0) {
+      return res.json({ weeks: [], total: 0 });
+    }
+
+    // Get proposal phase data for each project
+    const forecastData = [];
+
+    for (const project of projects) {
+      // Get proposal phases from os_beta_proposals (firewalled)
+      const proposalRows = await db.sql`
+        SELECT data FROM os_beta_proposals WHERE id = ${project.proposal_id}
+      `;
+
+      if (proposalRows.length === 0) continue;
+
+      const proposal = typeof proposalRows[0].data === 'string'
+        ? JSON.parse(proposalRows[0].data)
+        : proposalRows[0].data;
+
+      if (!proposal.phases || proposal.phases.length === 0) continue;
+
+      // Build a map of phase name -> phase cost (using low hours for conservative estimate)
+      const defaultRate = project.rate || 12000; // cents per hour, default $120/hr
+      const phaseMap = {};
+      for (const phase of proposal.phases) {
+        if (phase.optional) continue; // Skip optional phases
+        // Use phase rate if available, otherwise project rate, converted to cents
+        const phaseRate = phase.rate ? phase.rate * 100 : defaultRate;
+        phaseMap[phase.name] = {
+          lowHrs: phase.lowHrs || 0,
+          lowCost: (phase.lowHrs || 0) * phaseRate
+        };
+      }
+
+      // Get chunks grouped by phase with their completion dates
+      const chunks = await db.sql`
+        SELECT phase_name, draft_scheduled_end, scheduled_end
+        FROM chunks
+        WHERE project_id = ${project.id}
+          AND (draft_scheduled_start IS NOT NULL OR scheduled_start IS NOT NULL)
+        ORDER BY COALESCE(draft_scheduled_end, scheduled_end) DESC
+      `;
+
+      // Find the last chunk of each phase (that's when the phase completes)
+      const phaseCompletions = {};
+      for (const chunk of chunks) {
+        const phaseName = chunk.phase_name || 'General';
+        const completionDate = chunk.draft_scheduled_end || chunk.scheduled_end;
+
+        if (completionDate && !phaseCompletions[phaseName]) {
+          phaseCompletions[phaseName] = new Date(completionDate);
+        }
+      }
+
+      // Create forecast entries for each phase
+      for (const [phaseName, completionDate] of Object.entries(phaseCompletions)) {
+        const phaseInfo = phaseMap[phaseName];
+        if (!phaseInfo) continue; // Phase not in proposal
+
+        forecastData.push({
+          projectId: project.id,
+          projectName: project.name,
+          phaseName,
+          completionDate,
+          amount: phaseInfo.lowCost // Conservative estimate
+        });
+      }
+    }
+
+    // Group by week
+    const weekMap = new Map();
+    for (const entry of forecastData) {
+      // Get the Monday of the week
+      const date = new Date(entry.completionDate);
+      const day = date.getDay();
+      const monday = new Date(date);
+      monday.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+      monday.setHours(0, 0, 0, 0);
+      const weekKey = monday.toISOString().split('T')[0];
+
+      if (!weekMap.has(weekKey)) {
+        weekMap.set(weekKey, {
+          weekStart: monday.toISOString(),
+          weekLabel: monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          phases: [],
+          total: 0
+        });
+      }
+
+      const week = weekMap.get(weekKey);
+      week.phases.push({
+        projectName: entry.projectName,
+        phaseName: entry.phaseName,
+        amount: entry.amount
+      });
+      week.total += entry.amount;
+    }
+
+    // Sort weeks by date and convert to array
+    const weeks = Array.from(weekMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([_, week]) => week);
+
+    // Calculate grand total
+    const grandTotal = weeks.reduce((sum, week) => sum + week.total, 0);
+
+    res.json({
+      weeks,
+      total: grandTotal
+    });
+  } catch (err) {
+    console.error('Forecast error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Get calendar rocks (blocked time from reference calendar)
+app.get('/api/os-beta/schedule/rocks', async (req, res) => {
+  try {
+    // Get date range from query params or use next 14 weeks
+    const startDate = req.query.start ? new Date(req.query.start) : new Date();
+    const endDate = req.query.end ? new Date(req.query.end) : new Date(startDate.getTime() + 14 * 7 * 24 * 60 * 60 * 1000);
+
+    // Get Google access token
+    const tokenRows = await db.sql`
+      SELECT access_token, refresh_token, expires_at
+      FROM oauth_tokens
+      WHERE provider = 'google'
+    `;
+
+    if (tokenRows.length === 0) {
+      return res.status(401).json({ error: 'Google Calendar not connected' });
+    }
+
+    let accessToken = tokenRows[0].access_token;
+
+    // Check if token needs refresh
+    const expiresAt = new Date(tokenRows[0].expires_at);
+    if (expiresAt < new Date() && tokenRows[0].refresh_token) {
+      // Refresh the token
+      const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          refresh_token: tokenRows[0].refresh_token,
+          grant_type: 'refresh_token'
+        })
+      });
+      const tokens = await refreshResponse.json();
+      if (tokens.access_token) {
+        accessToken = tokens.access_token;
+        const newExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+        await db.sql`
+          UPDATE oauth_tokens
+          SET access_token = ${accessToken}, expires_at = ${newExpiresAt.toISOString()}, updated_at = NOW()
+          WHERE provider = 'google'
+        `;
+      }
+    }
+
+    // Fetch events from reference calendar
+    const calendarId = process.env.GOOGLE_REFERENCE_CALENDAR_ID || 'primary';
+    const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+    url.searchParams.set('timeMin', startDate.toISOString());
+    url.searchParams.set('timeMax', endDate.toISOString());
+    url.searchParams.set('singleEvents', 'true');
+    url.searchParams.set('orderBy', 'startTime');
+    url.searchParams.set('maxResults', '500');
+
+    const response = await fetch(url.toString(), {
+      headers: { 'Authorization': `Bearer ${accessToken}` }
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return res.status(response.status).json({ error: error.error?.message || 'Calendar API error' });
+    }
+
+    const data = await response.json();
+    const events = data.items || [];
+
+    // Convert to rocks format (blocked time ranges)
+    const rocks = events.map(event => {
+      if (event.start?.dateTime) {
+        // Timed event
+        return {
+          id: event.id,
+          title: event.summary || 'Busy',
+          start: event.start.dateTime,
+          end: event.end.dateTime,
+          allDay: false
+        };
+      } else if (event.start?.date) {
+        // All-day event
+        return {
+          id: event.id,
+          title: event.summary || 'All-day event',
+          start: event.start.date,
+          end: event.end.date,
+          allDay: true
+        };
+      }
+      return null;
+    }).filter(Boolean);
+
+    res.json(rocks);
+  } catch (err) {
+    console.error('Error fetching rocks:', err);
     res.status(500).json({ error: err.message });
   }
 });

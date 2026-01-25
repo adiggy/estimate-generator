@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Play, Pause, Square, Clock, CheckCircle, Trash2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Play, Pause, Square, Clock, CheckCircle, Trash2, Receipt, ArrowRight, Edit2, Check, X } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -29,8 +31,12 @@ function getElapsedSeconds(timer) {
 }
 
 // Active Timer Display
-function ActiveTimer({ timer, projects, onPause }) {
+function ActiveTimer({ timer, projects, onPause, onUpdateTime }) {
   const [elapsed, setElapsed] = useState(0)
+  const [editing, setEditing] = useState(false)
+  const [editHours, setEditHours] = useState('0')
+  const [editMins, setEditMins] = useState('00')
+  const [editSecs, setEditSecs] = useState('00')
   const intervalRef = useRef(null)
 
   useEffect(() => {
@@ -54,18 +60,99 @@ function ActiveTimer({ timer, projects, onPause }) {
 
   const project = projects.find(p => p.id === timer.project_id)
 
+  const startEdit = () => {
+    const hours = Math.floor(elapsed / 3600)
+    const mins = Math.floor((elapsed % 3600) / 60)
+    const secs = Math.floor(elapsed % 60)
+    setEditHours(String(hours))
+    setEditMins(String(mins).padStart(2, '0'))
+    setEditSecs(String(secs).padStart(2, '0'))
+    setEditing(true)
+  }
+
+  const cancelEdit = () => {
+    setEditing(false)
+  }
+
+  const saveEdit = () => {
+    const hours = parseInt(editHours) || 0
+    const mins = parseInt(editMins) || 0
+    const secs = parseInt(editSecs) || 0
+    const newSeconds = hours * 3600 + mins * 60 + secs
+    onUpdateTime(timer.id, newSeconds)
+    setEditing(false)
+  }
+
   return (
-    <div className="bg-brand-red rounded-2xl p-6 text-white text-center">
-      <p className="text-red-100 text-sm mb-2">Timer Running</p>
-      <p className="text-5xl font-bold font-mono mb-4">{formatDuration(elapsed)}</p>
-      <p className="text-red-100 mb-1">{timer.description || 'Work session'}</p>
-      <p className="text-red-200 text-sm mb-6">
+    <div className="bg-brand-slate rounded-2xl p-6 text-white text-center">
+      <p className="text-slate-300 text-sm mb-2">Timer Running</p>
+
+      {editing ? (
+        <div className="mb-4">
+          <div className="flex items-center justify-center gap-1 text-5xl font-bold font-mono">
+            <input
+              type="number"
+              min="0"
+              max="99"
+              value={editHours}
+              onChange={(e) => setEditHours(e.target.value)}
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+              autoFocus
+            />
+            <span>:</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={editMins}
+              onChange={(e) => setEditMins(e.target.value.slice(-2).padStart(2, '0'))}
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+            />
+            <span>:</span>
+            <input
+              type="number"
+              min="0"
+              max="59"
+              value={editSecs}
+              onChange={(e) => setEditSecs(e.target.value.slice(-2).padStart(2, '0'))}
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+            />
+          </div>
+          <div className="flex justify-center gap-2 mt-3">
+            <button
+              onClick={saveEdit}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
+            >
+              <Check className="w-4 h-4" />
+              Save
+            </button>
+            <button
+              onClick={cancelEdit}
+              className="px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 flex items-center gap-2"
+            >
+              <X className="w-4 h-4" />
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p
+          onClick={startEdit}
+          className="text-5xl font-bold font-mono mb-4 cursor-pointer hover:bg-white/10 rounded-lg px-2 py-1 -mx-2 transition-colors"
+          title="Click to edit time"
+        >
+          {formatDuration(elapsed)}
+        </p>
+      )}
+
+      <p className="text-slate-300 mb-1">{timer.description || 'Work session'}</p>
+      <p className="text-slate-400 text-sm mb-6">
         {project?.name || timer.project_id}
       </p>
 
       <button
         onClick={() => onPause(timer.id)}
-        className="w-full py-4 bg-white text-brand-red rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-red-50 transition-colors"
+        className="w-full py-4 bg-white text-brand-slate rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors"
       >
         <Pause className="w-6 h-6" />
         Pause Timer
@@ -113,7 +200,7 @@ function NewTimerForm({ projects, onStart }) {
       <button
         onClick={handleStart}
         disabled={!selectedProject}
-        className="w-full py-4 bg-brand-red text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-brand-red/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full py-4 bg-brand-slate text-white rounded-xl font-semibold text-lg flex items-center justify-center gap-3 hover:bg-brand-slate/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Play className="w-6 h-6" />
         Start Timer
@@ -174,7 +261,7 @@ function DraftEntry({ entry, projects, onResume, onFinalize, onDelete }) {
           Finalize
         </button>
         <button
-          onClick={() => onDelete(entry.id)}
+          onClick={() => onDelete(entry.id, entry.description || 'Work session')}
           className="py-2 px-3 text-sm bg-red-100 text-red-700 rounded-lg hover:bg-red-200 flex items-center justify-center"
           title="Delete"
         >
@@ -208,13 +295,20 @@ function FinalizedEntry({ entry, projects, onDelete }) {
         <p className="font-mono font-semibold text-slate-900">
           {formatMinutes(entry.duration_minutes)}
         </p>
-        <p className="text-xs text-slate-400">
-          {entry.invoiced ? 'Invoiced' : 'Ready'}
-        </p>
+        {entry.invoiced && entry.invoice_id ? (
+          <Link
+            to="/dashboard/os-beta/invoices"
+            className="text-xs text-green-600 hover:text-green-700"
+          >
+            View Invoice
+          </Link>
+        ) : (
+          <p className="text-xs text-slate-400">Ready</p>
+        )}
       </div>
       {!entry.invoiced && (
         <button
-          onClick={() => onDelete(entry.id)}
+          onClick={() => onDelete(entry.id, entry.description || 'Work session')}
           className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
           title="Delete"
         >
@@ -231,6 +325,7 @@ export default function TimePage() {
   const [finalizedEntries, setFinalizedEntries] = useState([])
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // { id, description }
 
   useEffect(() => {
     loadData()
@@ -331,6 +426,20 @@ export default function TimePage() {
     }
   }
 
+  const handleUpdateTime = async (id, newSeconds) => {
+    try {
+      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set_time', accumulated_seconds: newSeconds })
+      })
+      const updated = await res.json()
+      setActiveTimer(updated)
+    } catch (err) {
+      console.error('Failed to update time:', err)
+    }
+  }
+
   const handleFinalize = async (id) => {
     try {
       const res = await fetch(`${API_BASE}/time-logs/${id}`, {
@@ -346,12 +455,16 @@ export default function TimePage() {
     }
   }
 
-  const handleDelete = async (id) => {
-    if (!confirm('Delete this time entry?')) return
+  const handleDelete = (id, description) => {
+    setDeleteConfirm({ id, description: description || 'this time entry' })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return
     try {
-      await fetch(`${API_BASE}/time-logs/${id}`, { method: 'DELETE' })
-      setDraftTimers(prev => prev.filter(t => t.id !== id))
-      setFinalizedEntries(prev => prev.filter(t => t.id !== id))
+      await fetch(`${API_BASE}/time-logs/${deleteConfirm.id}`, { method: 'DELETE' })
+      setDraftTimers(prev => prev.filter(t => t.id !== deleteConfirm.id))
+      setFinalizedEntries(prev => prev.filter(t => t.id !== deleteConfirm.id))
     } catch (err) {
       console.error('Failed to delete:', err)
     }
@@ -373,6 +486,7 @@ export default function TimePage() {
           timer={activeTimer}
           projects={projects}
           onPause={handlePause}
+          onUpdateTime={handleUpdateTime}
         />
       ) : (
         <NewTimerForm projects={projects} onStart={handleStart} />
@@ -405,7 +519,17 @@ export default function TimePage() {
       {/* Finalized Entries (ready for invoice) */}
       {finalizedEntries.filter(e => !e.invoiced).length > 0 && (
         <div className="mt-8">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Ready to Invoice</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900">Ready to Invoice</h2>
+            <Link
+              to="/dashboard/os-beta/invoices?create=1"
+              className="flex items-center gap-2 text-sm text-brand-slate hover:text-brand-slate/80"
+            >
+              <Receipt className="w-4 h-4" />
+              Create Invoice
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
           <div className="space-y-2">
             {finalizedEntries.filter(e => !e.invoiced).map(entry => (
               <FinalizedEntry
@@ -435,6 +559,17 @@ export default function TimePage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={confirmDelete}
+        title="Delete Time Entry"
+        message={`Delete "${deleteConfirm?.description}"?\n\nThis cannot be undone.`}
+        confirmText="Delete"
+        danger
+      />
     </div>
   )
 }
