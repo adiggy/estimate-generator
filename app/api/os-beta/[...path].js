@@ -56,6 +56,15 @@ export default async function handler(req, res) {
                id ? (subResource === 'convert' ? handleProposalConvert(req, res, sql, id) : handleProposalById(req, res, sql, id)) :
                handleProposals(req, res, sql)
 
+      case 'schedule':
+        if (id === 'draft') {
+          return subResource === 'chunks' ? handleScheduleDraftChunks(req, res, sql) : handleScheduleDraft(req, res, sql)
+        }
+        if (id === 'generate') return handleScheduleGenerate(req, res, sql)
+        if (id === 'publish') return handleSchedulePublish(req, res, sql)
+        if (id === 'clear') return handleScheduleClear(req, res, sql)
+        return res.status(404).json({ error: 'Schedule route not found' })
+
       default:
         return res.status(404).json({ error: 'Route not found', path: pathSegments })
     }
@@ -1125,4 +1134,371 @@ async function handleProposalConvert(req, res, sql, proposalId) {
     chunks,
     message: `Created project with ${chunks.length} chunks from proposal`
   })
+}
+
+// ============ SCHEDULE ============
+
+const WORK_START_HOUR = 9
+const WORK_END_HOUR = 17
+const MAX_HOURS_PER_DAY = 6
+
+async function handleScheduleDraft(req, res, sql) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const rows = await sql`
+    SELECT * FROM schedule_drafts
+    WHERE status = 'draft'
+    ORDER BY generated_at DESC
+    LIMIT 1
+  `
+
+  if (rows.length === 0) {
+    return res.status(404).json({ error: 'No draft schedule found' })
+  }
+
+  return res.status(200).json(rows[0])
+}
+
+async function handleScheduleDraftChunks(req, res, sql) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const rows = await sql`
+    SELECT c.*, p.name as project_name, p.client_id, p.priority
+    FROM chunks c
+    JOIN projects p ON c.project_id = p.id
+    WHERE c.draft_scheduled_start IS NOT NULL
+    ORDER BY c.draft_order ASC
+  `
+
+  return res.status(200).json(rows)
+}
+
+async function handleScheduleGenerate(req, res, sql) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Get pending chunks
+  const chunks = await sql`
+    SELECT c.*, p.name as project_name, p.client_id, p.priority, p.last_touched_at
+    FROM chunks c
+    JOIN projects p ON c.project_id = p.id
+    WHERE c.status = 'pending'
+      AND p.status = 'active'
+    ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST
+  `
+
+  if (chunks.length === 0) {
+    return res.status(400).json({ error: 'No pending chunks to schedule' })
+  }
+
+  // Calculate week bounds (next week)
+  const now = new Date()
+  const dayOfWeek = now.getDay()
+  const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+  const monday = new Date(now)
+  monday.setDate(now.getDate() + daysUntilMonday)
+  monday.setHours(0, 0, 0, 0)
+  const friday = new Date(monday)
+  friday.setDate(monday.getDate() + 4)
+  friday.setHours(23, 59, 59, 999)
+
+  // Fetch calendar rocks if Google is connected
+  let rocks = []
+  try {
+    const tokenRows = await sql`SELECT access_token, refresh_token, expires_at FROM oauth_tokens WHERE provider = 'google'`
+    if (tokenRows.length > 0) {
+      let accessToken = tokenRows[0].access_token
+      const expiresAt = new Date(tokenRows[0].expires_at)
+
+      // Refresh if expired
+      if (expiresAt < new Date() && tokenRows[0].refresh_token) {
+        const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            refresh_token: tokenRows[0].refresh_token,
+            grant_type: 'refresh_token'
+          })
+        })
+        const refreshed = await refreshRes.json()
+        if (refreshed.access_token) {
+          accessToken = refreshed.access_token
+          const newExpires = new Date(Date.now() + refreshed.expires_in * 1000)
+          await sql`UPDATE oauth_tokens SET access_token = ${accessToken}, expires_at = ${newExpires.toISOString()}, updated_at = NOW() WHERE provider = 'google'`
+        }
+      }
+
+      // Fetch events
+      const calendarId = process.env.GOOGLE_REFERENCE_CALENDAR_ID || 'primary'
+      const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`)
+      url.searchParams.set('timeMin', monday.toISOString())
+      url.searchParams.set('timeMax', friday.toISOString())
+      url.searchParams.set('singleEvents', 'true')
+      url.searchParams.set('orderBy', 'startTime')
+
+      const calRes = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${accessToken}` } })
+      if (calRes.ok) {
+        const calData = await calRes.json()
+        rocks = (calData.items || []).map(event => {
+          if (event.start?.dateTime && event.end?.dateTime) {
+            return { start: new Date(event.start.dateTime), end: new Date(event.end.dateTime), title: event.summary }
+          }
+          if (event.start?.date) {
+            const date = new Date(event.start.date)
+            return {
+              start: new Date(date.setHours(WORK_START_HOUR, 0, 0, 0)),
+              end: new Date(date.setHours(WORK_END_HOUR, 0, 0, 0)),
+              title: event.summary || 'All-day'
+            }
+          }
+          return null
+        }).filter(Boolean)
+      }
+    }
+  } catch (err) {
+    console.error('Calendar fetch error:', err)
+  }
+
+  // Generate time slots
+  const slots = []
+  const current = new Date(monday)
+  while (current <= friday) {
+    const dayOfWeek = current.getDay()
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
+        const slotStart = new Date(current)
+        slotStart.setHours(hour, 0, 0, 0)
+        const slotEnd = new Date(slotStart)
+        slotEnd.setHours(hour + 1, 0, 0, 0)
+        slots.push({ start: slotStart, end: slotEnd, available: true })
+      }
+    }
+    current.setDate(current.getDate() + 1)
+  }
+
+  // Mark rocks
+  let rocksAvoided = 0
+  for (const slot of slots) {
+    for (const rock of rocks) {
+      if (slot.start < rock.end && slot.end > rock.start) {
+        slot.available = false
+        rocksAvoided++
+        break
+      }
+    }
+  }
+
+  // Schedule chunks
+  const scheduled = []
+  let slotIndex = 0
+  let hoursScheduledToday = 0
+  let currentDay = null
+
+  const sortedChunks = [...chunks].sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority
+    return new Date(b.last_touched_at || 0) - new Date(a.last_touched_at || 0)
+  })
+
+  for (const chunk of sortedChunks) {
+    const hoursNeeded = chunk.hours
+    let hoursAssigned = 0
+    const scheduledSlots = []
+
+    while (hoursAssigned < hoursNeeded && slotIndex < slots.length) {
+      const slot = slots[slotIndex]
+      const slotDay = slot.start.toDateString()
+      if (currentDay !== slotDay) {
+        currentDay = slotDay
+        hoursScheduledToday = 0
+      }
+
+      if (!slot.available || hoursScheduledToday >= MAX_HOURS_PER_DAY) {
+        slotIndex++
+        continue
+      }
+
+      slot.available = false
+      scheduledSlots.push(slot)
+      hoursAssigned++
+      hoursScheduledToday++
+      slotIndex++
+    }
+
+    if (scheduledSlots.length > 0) {
+      scheduled.push({
+        chunk,
+        start: scheduledSlots[0].start,
+        end: scheduledSlots[scheduledSlots.length - 1].end
+      })
+    }
+  }
+
+  // Save draft
+  const draftId = `draft-${Date.now().toString(36)}`
+
+  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`
+  await sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`
+
+  await sql`
+    INSERT INTO schedule_drafts (id, week_start, week_end, total_hours, chunk_count, rocks_avoided)
+    VALUES (
+      ${draftId},
+      ${monday.toISOString().split('T')[0]},
+      ${friday.toISOString().split('T')[0]},
+      ${scheduled.reduce((sum, s) => sum + s.chunk.hours, 0)},
+      ${scheduled.length},
+      ${rocksAvoided}
+    )
+  `
+
+  for (let i = 0; i < scheduled.length; i++) {
+    const { chunk, start, end } = scheduled[i]
+    await sql`
+      UPDATE chunks
+      SET draft_scheduled_start = ${start.toISOString()},
+          draft_scheduled_end = ${end.toISOString()},
+          draft_order = ${i},
+          updated_at = NOW()
+      WHERE id = ${chunk.id}
+    `
+  }
+
+  return res.status(200).json({
+    success: true,
+    draftId,
+    scheduled: scheduled.length,
+    unscheduled: chunks.length - scheduled.length,
+    rocksAvoided,
+    weekStart: monday.toISOString(),
+    weekEnd: friday.toISOString()
+  })
+}
+
+async function handleSchedulePublish(req, res, sql) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const chunks = await sql`
+    SELECT c.*, p.name as project_name, p.client_id
+    FROM chunks c
+    JOIN projects p ON c.project_id = p.id
+    WHERE c.draft_scheduled_start IS NOT NULL
+    ORDER BY c.draft_order ASC
+  `
+
+  if (chunks.length === 0) {
+    return res.status(400).json({ error: 'No draft schedule to publish' })
+  }
+
+  // Get Google token
+  const tokenRows = await sql`SELECT access_token, refresh_token, expires_at FROM oauth_tokens WHERE provider = 'google'`
+  if (tokenRows.length === 0) {
+    return res.status(400).json({ error: 'Google Calendar not connected' })
+  }
+
+  let accessToken = tokenRows[0].access_token
+  const expiresAt = new Date(tokenRows[0].expires_at)
+
+  // Refresh if expired
+  if (expiresAt < new Date() && tokenRows[0].refresh_token) {
+    const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        refresh_token: tokenRows[0].refresh_token,
+        grant_type: 'refresh_token'
+      })
+    })
+    const refreshed = await refreshRes.json()
+    if (refreshed.access_token) {
+      accessToken = refreshed.access_token
+      const newExpires = new Date(Date.now() + refreshed.expires_in * 1000)
+      await sql`UPDATE oauth_tokens SET access_token = ${accessToken}, expires_at = ${newExpires.toISOString()}, updated_at = NOW() WHERE provider = 'google'`
+    }
+  }
+
+  const workCalendarId = process.env.GOOGLE_WORK_CALENDAR_ID || 'primary'
+  const published = []
+  const failed = []
+
+  for (const chunk of chunks) {
+    const event = {
+      summary: `${chunk.project_name}: ${chunk.name}`,
+      description: `Project: ${chunk.project_name}\nClient: ${chunk.client_id}\nChunk ID: ${chunk.id}\n\n${chunk.description || ''}`,
+      start: {
+        dateTime: chunk.draft_scheduled_start,
+        timeZone: 'America/New_York'
+      },
+      end: {
+        dateTime: chunk.draft_scheduled_end,
+        timeZone: 'America/New_York'
+      },
+      colorId: '9'
+    }
+
+    try {
+      const calRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(workCalendarId)}/events`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(event)
+        }
+      )
+
+      if (calRes.ok) {
+        const created = await calRes.json()
+        await sql`
+          UPDATE chunks
+          SET scheduled_start = ${chunk.draft_scheduled_start},
+              scheduled_end = ${chunk.draft_scheduled_end},
+              calendar_event_id = ${created.id},
+              status = 'scheduled',
+              draft_scheduled_start = NULL,
+              draft_scheduled_end = NULL,
+              draft_order = NULL,
+              updated_at = NOW()
+          WHERE id = ${chunk.id}
+        `
+        published.push(chunk.id)
+      } else {
+        failed.push({ id: chunk.id, error: (await calRes.json()).error?.message })
+      }
+    } catch (err) {
+      failed.push({ id: chunk.id, error: err.message })
+    }
+  }
+
+  await sql`UPDATE schedule_drafts SET status = 'accepted', accepted_at = NOW() WHERE status = 'draft'`
+
+  return res.status(200).json({
+    success: true,
+    published: published.length,
+    failed: failed.length,
+    failures: failed
+  })
+}
+
+async function handleScheduleClear(req, res, sql) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`
+  await sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`
+
+  return res.status(200).json({ success: true })
 }

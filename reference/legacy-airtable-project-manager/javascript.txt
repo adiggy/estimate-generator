@@ -1,0 +1,223 @@
+let projectTable = base.getTable("Projects");
+let calendarTable = base.getTable("Google Calendar Events");
+let combinedTable = base.getTable("Combined Calendar");
+
+// Function to batch delete valid records
+async function batchDelete(table, records) {
+    if (!records || records.length === 0) return; // Skip if no records to delete
+
+    const batchSize = 50;
+    while (records.length > 0) {
+        let batch = records.slice(0, batchSize);
+
+        // Filter out invalid records (those without an ID)
+        let validRecords = batch.filter(record => record.id);
+        
+        if (validRecords.length > 0) {
+            try {
+                await table.deleteRecordsAsync(validRecords.map(record => record.id));
+            } catch (error) {
+                console.error(`Error deleting records: ${error.message}`);
+            }
+        }
+        
+        records = records.slice(batchSize);
+    }
+}
+
+// Function to batch update records
+async function batchClearScheduledField(table, records) {
+    const batchSize = 50;
+    for (let i = 0; i < records.length; i += batchSize) {
+        let batch = records.slice(i, i + batchSize);
+        let updates = batch.map(record => ({
+            id: record.id,
+            fields: { "Scheduled": null }
+        }));
+        await table.updateRecordsAsync(updates);
+    }
+}
+
+// Fetch all records in the combined table
+let combinedQuery = await combinedTable.selectRecordsAsync();
+let combinedRecords = combinedQuery.records;
+
+// Batch delete all records in the combined table
+await batchDelete(combinedTable, combinedRecords);
+
+// Fetch all calendar records with the necessary fields
+let calendarQuery = await calendarTable.selectRecordsAsync({
+    fields: ["Event Name", "Start Time", "End Time", "Event ID", "Created"]
+});
+
+// Get today's date at midnight
+let today = new Date();
+today.setHours(0, 0, 0, 0);
+
+// **Step 1: Delete Past Events**
+let pastCalendarRecords = calendarQuery.records.filter(record => {
+    let endTime = new Date(record.getCellValue("End Time"));
+    return endTime < today;
+});
+await batchDelete(calendarTable, pastCalendarRecords);
+
+// **Step 2: Handle Duplicate Events**
+let eventsById = {};
+let validCalendarRecords = calendarQuery.records.filter(record => {
+    let endTime = new Date(record.getCellValue("End Time"));
+    return endTime >= today; // Keep only current/future events
+});
+
+for (let record of validCalendarRecords) {
+    let eventId = record.getCellValue("Event ID");
+    let createdDate = new Date(record.getCellValue("Created"));
+
+    if (!eventsById[eventId] || createdDate > new Date(eventsById[eventId].getCellValue("Created"))) {
+        eventsById[eventId] = record;
+    }
+}
+
+// Delete duplicate records (keep only the latest version)
+let duplicateEvents = validCalendarRecords.filter(record => {
+    let eventId = record.getCellValue("Event ID");
+    return eventsById[eventId].id !== record.id;
+});
+await batchDelete(calendarTable, duplicateEvents);
+
+// Proceed with scheduling
+let projectQuery = await projectTable.selectRecordsAsync({
+    fields: ["Job request", "Status", "Days since last touched", "Timechunk", "Scheduled", "Last touched date", "Added to calendar manually"]
+});
+
+// Clear the "Scheduled" field for **all** projects before scheduling
+await batchClearScheduledField(projectTable, projectQuery.records);
+
+// Separate project records into priority, active, and waiting on
+let priorityProjects = projectQuery.records.filter(record => record.getCellValue("Status")?.name?.trim() === "PRIORITY");
+let activeProjects = projectQuery.records.filter(record => record.getCellValue("Status")?.name?.trim() === "ACTIVE");
+let waitingOnProjects = projectQuery.records.filter(record => record.getCellValue("Status")?.name?.trim() === "WAITING ON");
+
+// Helper function to safely get "Days since last touched"
+function getDaysSinceLastTouched(record) {
+    let value = record.getCellValue("Days since last touched");
+    return value === null || value === undefined ? -1 : parseFloat(value);
+}
+
+// Sort project records based on "Days since last touched"
+priorityProjects.sort((a, b) => getDaysSinceLastTouched(b) - getDaysSinceLastTouched(a));
+activeProjects.sort((a, b) => getDaysSinceLastTouched(b) - getDaysSinceLastTouched(a));
+waitingOnProjects.sort((a, b) => getDaysSinceLastTouched(b) - getDaysSinceLastTouched(a));
+
+let projectRecords = [...priorityProjects, ...activeProjects, ...waitingOnProjects];
+projectRecords = projectRecords.filter(record => !record.getCellValue("Added to calendar manually"));
+
+let startOfWorkday = 12;  // 12 PM
+let endOfWorkday = 18;    // 6 PM
+
+function toEasternTime(date) {
+    return new Date(date.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+}
+
+// **Ensure scheduling starts at the next available hour within the workday**
+let startDate = new Date();
+startDate = toEasternTime(startDate);
+startDate.setMinutes(0, 0, 0);
+startDate.setHours(startDate.getHours() + 1);
+
+// **Move to the next workday if needed**
+function moveToNextWorkday(date) {
+    // If it's before the workday start on a valid weekday, just set it to workday start.
+    if (date.getHours() < startOfWorkday && date.getDay() !== 0 && date.getDay() !== 6) {
+        date.setHours(startOfWorkday, 0, 0, 0);
+        return;
+    }
+    // Otherwise, move to the next valid workday.
+    do {
+        date.setDate(date.getDate() + 1);
+    } while (date.getDay() === 0 || date.getDay() === 6);
+    date.setHours(startOfWorkday, 0, 0, 0);
+}
+
+while (startDate.getHours() >= endOfWorkday || startDate.getHours() < startOfWorkday || startDate.getDay() === 0 || startDate.getDay() === 6) {
+    moveToNextWorkday(startDate);
+}
+
+// **Function to check time slot availability**
+function isTimeSlotAvailable(start, duration, scheduledEvents) {
+    let end = new Date(start);
+    end.setHours(start.getHours() + duration);
+
+    // **Ensure event stays within working hours**
+    if (start.getHours() < startOfWorkday || end.getHours() > endOfWorkday) {
+        return false;
+    }
+
+    for (let event of scheduledEvents) {
+        let eventStart = new Date(event["Start Time"]);
+        let eventEnd = new Date(event["End Time"]);
+        if ((start >= eventStart && start < eventEnd) || (end > eventStart && end <= eventEnd) || (start <= eventStart && end >= eventEnd)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// **Function to schedule a project**
+async function scheduleProject(record, start, duration) {
+    let end = new Date(start);
+    end.setHours(start.getHours() + duration);
+
+    let prefix = record.getCellValue("Status")?.name?.trim() === "PRIORITY" ? "(!) " : "";
+
+    await projectTable.updateRecordAsync(record.id, { "Scheduled": start.toISOString() });
+
+    await combinedTable.createRecordAsync({
+        "Event Name": prefix + record.getCellValue("Job request"),
+        "Start Time": start.toISOString(),
+        "End Time": end.toISOString(),
+        "Event Type": { name: "Project" }
+    });
+
+    scheduledEvents.push({ "Start Time": start.toISOString(), "End Time": end.toISOString() });
+
+    return end;
+}
+
+// **Schedule fixed events first**
+let scheduledEvents = [];
+for (let record of Object.values(eventsById)) {
+    await combinedTable.createRecordAsync({
+        "Event Name": "FIXED: " + record.getCellValue("Event Name"),
+        "Start Time": record.getCellValue("Start Time"),
+        "End Time": record.getCellValue("End Time"),
+        "Event Type": { name: "Fixed" }
+    });
+
+    scheduledEvents.push({
+        "Start Time": record.getCellValue("Start Time"),
+        "End Time": record.getCellValue("End Time")
+    });
+}
+
+// Main Scheduling Loop
+let currentDate = new Date(startDate);
+while (projectRecords.length > 0) {
+    let nextProject = projectRecords.shift();
+    let timechunk = nextProject.getCellValue("Timechunk");
+    if (!timechunk) {
+        console.warn(`Project "${nextProject.getCellValue('Job request')}" has no "Timechunk" value. Skipping.`);
+        continue; // Skip this project if "Timechunk" is null
+    }
+    let duration = parseInt(timechunk.name);
+
+    while (!isTimeSlotAvailable(currentDate, duration, scheduledEvents)) {
+        currentDate.setHours(currentDate.getHours() + 1);
+
+        if (currentDate.getHours() >= endOfWorkday) {
+            moveToNextWorkday(currentDate);
+        }
+    }
+
+    currentDate = await scheduleProject(nextProject, currentDate, duration);
+}

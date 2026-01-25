@@ -802,6 +802,177 @@ app.get('/api/os-beta/auth/google/status', async (req, res) => {
   }
 });
 
+// Schedule - Get current draft
+app.get('/api/os-beta/schedule/draft', async (req, res) => {
+  try {
+    const rows = await db.sql`
+      SELECT * FROM schedule_drafts
+      WHERE status = 'draft'
+      ORDER BY generated_at DESC
+      LIMIT 1
+    `;
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No draft schedule found' });
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Get draft chunks
+app.get('/api/os-beta/schedule/draft/chunks', async (req, res) => {
+  try {
+    const rows = await db.sql`
+      SELECT c.*, p.name as project_name, p.client_id, p.priority
+      FROM chunks c
+      JOIN projects p ON c.project_id = p.id
+      WHERE c.draft_scheduled_start IS NOT NULL
+      ORDER BY c.draft_order ASC
+    `;
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Generate draft (simplified for local dev - use npm run schedule for full generation)
+app.post('/api/os-beta/schedule/generate', async (req, res) => {
+  try {
+    // Get pending chunks
+    const chunks = await db.sql`
+      SELECT c.*, p.name as project_name, p.client_id, p.priority, p.last_touched_at
+      FROM chunks c
+      JOIN projects p ON c.project_id = p.id
+      WHERE c.status = 'pending' AND p.status = 'active'
+      ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST
+    `;
+
+    if (chunks.length === 0) {
+      return res.status(400).json({ error: 'No pending chunks to schedule' });
+    }
+
+    // Simple scheduling - next week Mon-Fri, 9-5, max 6 hours/day
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + daysUntilMonday);
+    monday.setHours(9, 0, 0, 0);
+
+    // Clear existing draft
+    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`;
+    await db.sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`;
+
+    // Generate schedule
+    const scheduled = [];
+    let currentSlot = new Date(monday);
+    let hoursToday = 0;
+
+    for (const chunk of chunks) {
+      // Skip weekends
+      while (currentSlot.getDay() === 0 || currentSlot.getDay() === 6) {
+        currentSlot.setDate(currentSlot.getDate() + 1);
+        currentSlot.setHours(9, 0, 0, 0);
+        hoursToday = 0;
+      }
+
+      // Check if we've hit daily limit
+      if (hoursToday >= 6 || currentSlot.getHours() >= 17) {
+        currentSlot.setDate(currentSlot.getDate() + 1);
+        currentSlot.setHours(9, 0, 0, 0);
+        hoursToday = 0;
+        // Skip weekends again
+        while (currentSlot.getDay() === 0 || currentSlot.getDay() === 6) {
+          currentSlot.setDate(currentSlot.getDate() + 1);
+        }
+      }
+
+      const start = new Date(currentSlot);
+      const end = new Date(currentSlot);
+      end.setHours(start.getHours() + chunk.hours);
+
+      scheduled.push({ chunk, start, end });
+
+      currentSlot.setHours(end.getHours());
+      hoursToday += chunk.hours;
+    }
+
+    // Save draft
+    const draftId = `draft-${Date.now().toString(36)}`;
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4);
+
+    await db.sql`
+      INSERT INTO schedule_drafts (id, week_start, week_end, total_hours, chunk_count, rocks_avoided)
+      VALUES (${draftId}, ${monday.toISOString().split('T')[0]}, ${friday.toISOString().split('T')[0]},
+        ${scheduled.reduce((sum, s) => sum + s.chunk.hours, 0)}, ${scheduled.length}, 0)
+    `;
+
+    for (let i = 0; i < scheduled.length; i++) {
+      const { chunk, start, end } = scheduled[i];
+      await db.sql`
+        UPDATE chunks
+        SET draft_scheduled_start = ${start.toISOString()}, draft_scheduled_end = ${end.toISOString()}, draft_order = ${i}, updated_at = NOW()
+        WHERE id = ${chunk.id}
+      `;
+    }
+
+    res.json({ success: true, draftId, scheduled: scheduled.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Publish draft
+app.post('/api/os-beta/schedule/publish', async (req, res) => {
+  try {
+    const chunks = await db.sql`
+      SELECT c.*, p.name as project_name, p.client_id
+      FROM chunks c
+      JOIN projects p ON c.project_id = p.id
+      WHERE c.draft_scheduled_start IS NOT NULL
+      ORDER BY c.draft_order ASC
+    `;
+
+    if (chunks.length === 0) {
+      return res.status(400).json({ error: 'No draft to publish' });
+    }
+
+    // For now, just mark as scheduled (calendar integration in production)
+    for (const chunk of chunks) {
+      await db.sql`
+        UPDATE chunks
+        SET scheduled_start = ${chunk.draft_scheduled_start},
+            scheduled_end = ${chunk.draft_scheduled_end},
+            status = 'scheduled',
+            draft_scheduled_start = NULL,
+            draft_scheduled_end = NULL,
+            draft_order = NULL,
+            updated_at = NOW()
+        WHERE id = ${chunk.id}
+      `;
+    }
+
+    await db.sql`UPDATE schedule_drafts SET status = 'accepted', accepted_at = NOW() WHERE status = 'draft'`;
+
+    res.json({ success: true, published: chunks.length });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Schedule - Clear draft
+app.post('/api/os-beta/schedule/clear', async (req, res) => {
+  try {
+    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`;
+    await db.sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`;
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`API server running at http://localhost:${PORT}`);
 });

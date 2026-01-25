@@ -31,10 +31,14 @@ if (!DATABASE_URL) {
 
 const sql = neon(DATABASE_URL)
 
-const LEGACY_DIR = path.join(__dirname, '..', 'legacy_data', 'airtable')
-const CLIENTS_FILE = path.join(LEGACY_DIR, 'Clients-Grid view.csv')
-const PROJECTS_FILE = path.join(LEGACY_DIR, 'Projects-EVERYTHING.csv')
-const PEOPLE_FILE = path.join(LEGACY_DIR, 'People-Grid view.csv')
+const AIRTABLE_DIR = path.join(__dirname, '..', 'legacy_data', 'airtable')
+const BONSAI_DIR = path.join(__dirname, '..', 'legacy_data', 'bonsai')
+
+const CLIENTS_FILE = path.join(AIRTABLE_DIR, 'Clients-Grid view.csv')
+const PROJECTS_FILE = path.join(AIRTABLE_DIR, 'Projects-EVERYTHING.csv')
+const PEOPLE_FILE = path.join(AIRTABLE_DIR, 'People-Grid view.csv')
+const BONSAI_PROJECTS_FILE = path.join(BONSAI_DIR, 'adrial_project_export_2026-01-25_47a7c6a9f75b9cf716111ae412c4.csv')
+const BONSAI_INVOICES_FILE = path.join(BONSAI_DIR, 'adrial_invoice_export_2026-01-25_d6659ed2b281da5ab3f077337348.csv')
 
 // ============================================================================
 // STATUS MAPPING
@@ -479,6 +483,211 @@ async function importPeople() {
   console.log('  (People are linked via project "People" field)')
 }
 
+/**
+ * Import Bonsai hosting projects
+ * @param {Map<string, Object>} clientMap
+ * @returns {Promise<number>}
+ */
+async function importBonsaiHosting(clientMap) {
+  console.log('\n🏠 Importing Bonsai Hosting Projects...')
+
+  if (!fs.existsSync(BONSAI_PROJECTS_FILE)) {
+    console.log('  Skipping - Bonsai projects file not found')
+    return 0
+  }
+
+  const content = fs.readFileSync(BONSAI_PROJECTS_FILE, 'utf8')
+  const rows = parseCSV(content)
+
+  // Filter to only hosting projects
+  const hostingRows = rows.filter(row => {
+    const title = (row['title'] || '').toLowerCase()
+    return title.includes('hosting') || title.includes('web host')
+  })
+
+  console.log(`  Found ${hostingRows.length} hosting projects in Bonsai`)
+
+  const usedIds = new Set()
+  let imported = 0
+
+  for (const row of hostingRows) {
+    const title = row['title']
+    const clientName = row['client_or_company_name']
+    const bonsaiStatus = row['status']
+    const amountPaid = parseFloat(row['amount_paid']) || 0
+
+    if (!title || !clientName) continue
+
+    // Create/get client
+    const clientSlug = slugify(clientName)
+    if (!clientMap.has(clientName)) {
+      if (!DRY_RUN) {
+        await sql`
+          INSERT INTO clients (id, data)
+          VALUES (${clientSlug}, ${JSON.stringify({ id: clientSlug, name: clientName, company: clientName })})
+          ON CONFLICT (id) DO NOTHING
+        `
+      }
+      clientMap.set(clientName, { id: clientSlug, name: clientName })
+    }
+
+    const projectId = generateProjectId(clientSlug, title, usedIds)
+    const status = bonsaiStatus === 'active' ? 'active' : 'paused'
+
+    const project = {
+      id: projectId,
+      client_id: clientSlug,
+      name: title,
+      description: `Bonsai hosting project. Total paid: $${amountPaid.toFixed(2)}`,
+      status,
+      priority: 0,
+      billing_type: 'retainer',
+      billing_platform: 'bonsai_legacy',
+      rate: 3900, // $39/month in cents
+      notes: `Bonsai link: ${row['project_link'] || 'N/A'}`,
+      external_links: row['project_link'] ? [row['project_link']] : []
+    }
+
+    if (!DRY_RUN) {
+      await sql`
+        INSERT INTO projects (
+          id, client_id, name, description, status, priority,
+          billing_type, billing_platform, rate, notes, external_links
+        ) VALUES (
+          ${project.id}, ${project.client_id}, ${project.name}, ${project.description},
+          ${project.status}, ${project.priority}, ${project.billing_type},
+          ${project.billing_platform}, ${project.rate}, ${project.notes},
+          ${JSON.stringify(project.external_links)}
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          status = EXCLUDED.status,
+          description = EXCLUDED.description,
+          updated_at = NOW()
+      `
+    }
+
+    imported++
+  }
+
+  console.log(`  ${DRY_RUN ? 'Would import' : 'Imported'}: ${imported} hosting projects`)
+  return imported
+}
+
+/**
+ * Import Bonsai invoices
+ * @param {Map<string, Object>} clientMap
+ * @returns {Promise<number>}
+ */
+async function importBonsaiInvoices(clientMap) {
+  console.log('\n💵 Importing Bonsai Invoices...')
+
+  if (!fs.existsSync(BONSAI_INVOICES_FILE)) {
+    console.log('  Skipping - Bonsai invoices file not found')
+    return 0
+  }
+
+  const content = fs.readFileSync(BONSAI_INVOICES_FILE, 'utf8')
+  const rows = parseCSV(content)
+
+  console.log(`  Found ${rows.length} invoices in Bonsai`)
+
+  let imported = 0
+  let skipped = 0
+  const statusCounts = { paid: 0, sent: 0, draft: 0 }
+
+  for (const row of rows) {
+    const invoiceNumber = row['invoice_number']
+    const clientName = row['client_or_company_name']
+    const totalAmount = parseFloat(row['total_amount']) || 0
+    const bonsaiStatus = (row['status'] || '').toLowerCase()
+    const issuedDate = row['issued_date']
+    const paidDate = row['paid_date']
+
+    if (!invoiceNumber || !clientName || totalAmount === 0) {
+      skipped++
+      continue
+    }
+
+    // Get/create client
+    const clientSlug = slugify(clientName)
+    if (!clientMap.has(clientName)) {
+      if (!DRY_RUN) {
+        await sql`
+          INSERT INTO clients (id, data)
+          VALUES (${clientSlug}, ${JSON.stringify({ id: clientSlug, name: clientName, company: clientName })})
+          ON CONFLICT (id) DO NOTHING
+        `
+      }
+      clientMap.set(clientName, { id: clientSlug, name: clientName })
+    }
+
+    // Map status
+    let status = 'draft'
+    if (bonsaiStatus === 'paid') {
+      status = 'paid'
+      statusCounts.paid++
+    } else if (bonsaiStatus === 'sent' || bonsaiStatus === 'overdue') {
+      status = 'sent'
+      statusCounts.sent++
+    } else {
+      statusCounts.draft++
+    }
+
+    const invoiceId = `bonsai-${invoiceNumber}`
+    const totalCents = Math.round(totalAmount * 100)
+
+    const invoice = {
+      id: invoiceId,
+      client_id: clientSlug,
+      status,
+      subtotal: totalCents,
+      total: totalCents,
+      line_items: [
+        {
+          description: row['contractor_project_name'] || 'Bonsai Invoice',
+          amount: totalCents
+        }
+      ],
+      notes: `Imported from Bonsai. Original: ${row['contractor_invoice_link'] || 'N/A'}`,
+      sent_at: issuedDate || null,
+      paid_at: paidDate || null
+    }
+
+    if (!DRY_RUN) {
+      await sql`
+        INSERT INTO invoices (
+          id, client_id, status, subtotal, total, line_items, notes, sent_at, paid_at
+        ) VALUES (
+          ${invoice.id}, ${invoice.client_id}, ${invoice.status}, ${invoice.subtotal},
+          ${invoice.total}, ${JSON.stringify(invoice.line_items)}, ${invoice.notes},
+          ${invoice.sent_at}, ${invoice.paid_at}
+        )
+        ON CONFLICT (id) DO UPDATE SET
+          status = EXCLUDED.status,
+          paid_at = EXCLUDED.paid_at,
+          updated_at = NOW()
+      `
+    }
+
+    imported++
+
+    if (imported % 50 === 0) {
+      process.stdout.write(`  Progress: ${imported}/${rows.length} invoices...\r`)
+    }
+  }
+
+  process.stdout.write(' '.repeat(50) + '\r')
+
+  console.log(`  ${DRY_RUN ? 'Would import' : 'Imported'}: ${imported} invoices`)
+  console.log(`  Skipped (zero amount or missing data): ${skipped}`)
+  console.log('\n  Status breakdown:')
+  for (const [status, count] of Object.entries(statusCounts)) {
+    console.log(`    ${status}: ${count}`)
+  }
+
+  return imported
+}
+
 // ============================================================================
 // MAIN
 // ============================================================================
@@ -506,8 +715,14 @@ async function main() {
     // Import clients first
     const clientMap = await importClients()
 
-    // Import projects (using client map for lookups)
+    // Import Airtable projects (using client map for lookups)
     await importProjects(clientMap)
+
+    // Import Bonsai hosting projects
+    await importBonsaiHosting(clientMap)
+
+    // Import Bonsai invoices
+    await importBonsaiInvoices(clientMap)
 
     // Log people (informational only)
     await importPeople()

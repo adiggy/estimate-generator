@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   FolderKanban, Clock, FileText, Search, Menu, X,
-  ChevronDown, Server, LayoutDashboard, ClipboardList, Receipt
+  ChevronDown, Server, LayoutDashboard, ClipboardList, Receipt, CalendarDays
 } from 'lucide-react'
 import ProjectsPage from './pages/ProjectsPage'
 import HostingPage from './pages/HostingPage'
@@ -11,6 +11,7 @@ import TimePage from './pages/TimePage'
 import InvoicesPage from './pages/InvoicesPage'
 import SearchPage from './pages/SearchPage'
 import ProposalsPage from './pages/ProposalsPage'
+import SchedulePage from './pages/SchedulePage'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -25,6 +26,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/dashboard/os-beta/hosting', icon: Server, label: 'Hosting' },
     { path: '/dashboard/os-beta/time', icon: Clock, label: 'Time' },
     { path: '/dashboard/os-beta/invoices', icon: Receipt, label: 'Invoices' },
+    { path: '/dashboard/os-beta/schedule', icon: CalendarDays, label: 'Schedule' },
   ]
 
   return (
@@ -315,6 +317,7 @@ export default function OsApp() {
             <Route path="hosting" element={<HostingPage />} />
             <Route path="time" element={<TimePage />} />
             <Route path="invoices" element={<InvoicesPage />} />
+            <Route path="schedule" element={<SchedulePage />} />
             <Route path="search" element={<SearchPage />} />
           </Routes>
         </main>
