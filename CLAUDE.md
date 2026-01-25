@@ -1,6 +1,29 @@
-# Estimate Generator - Claude Workflow
+# Adrial Designs OS - Claude Workflow
+
+## Team Roles
+
+- **Project Manager:** Gemini (Antigravity) - Strategy, coordination, requirements
+- **Senior Developer:** Claude Code - Implementation, architecture, coding
+
+---
 
 ## Overview
+
+This is the **Agency Operating System** for Adrial Designs, combining:
+1. **Proposal Generator** - Create client proposals from input documents
+2. **Project Management** - Track all projects with status, priority, and billing
+3. **Time Tracking** - Start/stop timers, log billable hours
+4. **Invoicing** - Generate invoices from tracked time and chunks
+
+**Architecture:** "Local-First, AI-Worker"
+- **App** = React UI for viewing/managing data (Vite + Neon)
+- **Worker** = Claude Code via CLI for intelligent tasks (scheduling, chunking, invoice drafting)
+
+**Production Safety:** Proposals at root `/`, OS features sandboxed at `/dashboard/os-beta/`
+
+---
+
+## Part 1: Proposal Generator
 
 This tool generates design proposals for Adrial Designs. Claude creates complete proposal JSON files based on input documents, which are then edited in the browser-based proposal editor.
 
@@ -425,5 +448,124 @@ When estimating project timelines:
 | 150-220 hrs | 10-14 weeks |
 
 Include post-launch support period if applicable (e.g., "followed by 30 days of post-launch support").
+
+---
+
+## Part 2: Agency Operating System (OS Beta)
+
+### Accessing the OS
+
+- **Local:** `http://localhost:5173/dashboard/os-beta`
+- **Production:** `https://adesigns-estimate.vercel.app/dashboard/os-beta`
+
+### Database Schema
+
+The OS extends the existing Neon database with these tables:
+
+| Table | Purpose |
+|-------|---------|
+| `projects` | All work items with status, priority, billing info |
+| `chunks` | 1-3 hour work units for scheduling |
+| `time_logs` | Tracked time entries (billable/non-billable) |
+| `invoices` | Draft, sent, and paid invoices |
+| `oauth_tokens` | Google Calendar tokens (future) |
+
+**Key Fields:**
+- **Money in cents:** `rate = 12000` means $120.00
+- **Status values:** `active`, `waiting_on`, `paused`, `done`, `invoiced`
+- **Priority:** `1` = priority, `0` = normal, `-1` = later, `-2` = maybe
+- **Billing platforms:** `os` (new system) vs `bonsai_legacy` (hosting clients)
+
+### CLI Scripts
+
+| Command | Purpose |
+|---------|---------|
+| `npm run import-legacy` | Import Airtable CSV data (run with `--dry-run` first) |
+| `npm run time-log start {project-id} "desc"` | Start timer |
+| `npm run time-log stop` | Stop active timer |
+| `npm run time-log log {project-id} "desc" --duration 2h` | Log completed time |
+| `npm run time-log status` | Check active timer |
+| `npm run time-log list {project-id}` | List recent logs |
+| `npm run invoice --client {id}` | Generate invoice for client |
+| `npm run invoice --project {id}` | Generate invoice for project |
+| `npm run chunker {project-id}` | Break project into schedulable chunks |
+| `npm run schedule --week` | Schedule chunks for coming week |
+
+### API Endpoints
+
+All OS endpoints are under `/api/os-beta/`:
+
+| Endpoint | Methods | Purpose |
+|----------|---------|---------|
+| `/projects` | GET, POST | List/create projects |
+| `/projects/{id}` | GET, PUT, DELETE | Single project operations |
+| `/chunks` | GET, POST | List/create chunks |
+| `/chunks/{id}` | GET, PUT, DELETE | Single chunk operations |
+| `/time-logs` | GET, POST | List/create time entries |
+| `/time-logs/{id}` | GET, PUT, DELETE | Single time log operations |
+| `/invoices` | GET, POST | List/create invoices |
+| `/invoices/{id}` | GET, PUT, DELETE | Single invoice operations |
+| `/stats` | GET | CFO metrics (unbilled, unpaid, revenue) |
+| `/search?q=term` | GET | Global search across all data |
+
+### UI Pages
+
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/dashboard/os-beta` | Projects | Smart grid of active projects (excludes hosting) |
+| `/dashboard/os-beta/hosting` | Hosting | Legacy Bonsai clients with MRR display |
+| `/dashboard/os-beta/projects/{id}` | Project Details | Gantt view with chunks by phase |
+| `/dashboard/os-beta/time` | Time Tracking | Mobile-first timer interface |
+| `/dashboard/os-beta/invoices` | Invoices | Invoice list and creation |
+| `/dashboard/os-beta/search` | Search | Global search results |
+
+### Status Colors
+
+- `active` - Green (#22c55e)
+- `waiting_on` - Yellow (#eab308)
+- `paused` - Gray (#6b7280)
+- `done` - Blue (#3b82f6)
+- `invoiced` - Purple (#8b5cf6)
+
+### Workflow: From Proposal to Invoice
+
+1. **Create Proposal** → Generate proposal JSON, push to Neon
+2. **Convert to Project** → Create project record linked to proposal
+3. **Break into Chunks** → Use `npm run chunker` or UI to create 1-3 hour work units
+4. **Schedule Work** → Assign chunks to calendar slots
+5. **Track Time** → Start/stop timer or log completed hours
+6. **Generate Invoice** → Select unbilled time, create invoice
+7. **Send & Track** → Mark invoice sent, track payment
+
+### Legacy Data Import
+
+The system imported 499 historical projects from Airtable. Status mapping:
+
+| Airtable | OS Status | Priority |
+|----------|-----------|----------|
+| DONE | done | 0 |
+| INVOICE | invoiced | 0 |
+| WAITING ON | waiting_on | 0 |
+| ACTIVE | active | 0 |
+| PRIORITY | active | 1 |
+| PAUSED/FUTURE | paused | 0 |
+| LATER? | paused | -1 |
+| MAYBE | paused | -2 |
+
+### Files Reference
+
+| File | Purpose |
+|------|---------|
+| `scripts/schema_extension.sql` | Database schema for OS tables |
+| `scripts/lib/db.js` | Shared database utilities |
+| `scripts/import-legacy.js` | Airtable CSV importer |
+| `scripts/time-log.js` | Time tracking CLI |
+| `scripts/generate-invoice.js` | Invoice generation CLI |
+| `scripts/chunker.js` | Project scope breakdown |
+| `scripts/scheduler.js` | Calendar scheduling |
+| `app/api/os-beta/*` | Serverless API endpoints |
+| `app/src/os-beta/*` | React UI components |
+
+---
 
 Whenever we start a new round of work together, say "Ahoy matey, I have read the CLAUDE.md file and am all caught up!"

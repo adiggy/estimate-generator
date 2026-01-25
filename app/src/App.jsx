@@ -1057,12 +1057,16 @@ function EditorPage() {
   return <Editor proposal={proposal} onSave={saveProposal} templates={templates} isViewMode={isViewMode} />
 }
 
+// Import OS Beta app
+import OsApp from './os-beta/OsApp'
+
 // Main App with Router
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
+        <Route path="/dashboard/os-beta/*" element={<OsApp />} />
         <Route path="/:id" element={<EditorPage />} />
       </Routes>
     </BrowserRouter>

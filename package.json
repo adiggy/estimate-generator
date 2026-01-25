@@ -8,7 +8,12 @@
     "dev": "cd app && npm run dev",
     "start": "node server.js & (cd app && npm run dev)",
     "push-proposal": "node scripts/push-proposal.js",
-    "push-all-proposals": "node scripts/push-proposal.js --all"
+    "push-all-proposals": "node scripts/push-proposal.js --all",
+    "import-legacy": "node scripts/import-legacy.js",
+    "time-log": "node scripts/time-log.js",
+    "invoice": "node scripts/generate-invoice.js",
+    "schedule": "node scripts/scheduler.js",
+    "chunker": "node scripts/chunker.js"
   },
   "keywords": [],
   "author": "",
