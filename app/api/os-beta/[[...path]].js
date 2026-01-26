@@ -18,8 +18,19 @@ export default async function handler(req, res) {
 
   const sql = neon(process.env.DATABASE_URL)
 
-  // Parse path segments: /api/os-beta/projects/abc → ['projects', 'abc']
-  const pathSegments = req.query.path || []
+  // Parse path segments from URL: /api/os-beta/projects/abc → ['projects', 'abc']
+  // Try multiple methods to get path segments for Vercel compatibility
+  let pathSegments = req.query.path || []
+
+  // If path is empty, try parsing from URL directly
+  if (!pathSegments.length && req.url) {
+    const urlPath = req.url.split('?')[0] // Remove query string
+    const match = urlPath.match(/\/api\/os-beta\/(.*)/)
+    if (match && match[1]) {
+      pathSegments = match[1].split('/').filter(Boolean)
+    }
+  }
+
   const [resource, id, subResource] = pathSegments
 
   try {
