@@ -19,8 +19,17 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL)
 
   // Parse path segments from URL: /api/os-beta/projects/abc → ['projects', 'abc']
-  // Try multiple methods to get path segments for Vercel compatibility
-  let pathSegments = req.query.path || []
+  // With Vercel rewrites, path can come as string or array in query params
+  let pathSegments = []
+
+  // Check query.path first (from rewrite rule)
+  if (req.query.path) {
+    if (Array.isArray(req.query.path)) {
+      pathSegments = req.query.path
+    } else if (typeof req.query.path === 'string') {
+      pathSegments = req.query.path.split('/').filter(Boolean)
+    }
+  }
 
   // If path is empty, try parsing from URL directly
   if (!pathSegments.length && req.url) {
@@ -541,6 +550,20 @@ async function handleTimeLogById(req, res, sql, id) {
         UPDATE time_logs
         SET status = 'draft', accumulated_seconds = ${accumulated}, last_resumed_at = NULL,
             duration_minutes = ${durationMinutes}, updated_at = NOW()
+        WHERE id = ${id}
+      `
+      const rows = await sql`SELECT * FROM time_logs WHERE id = ${id}`
+      return res.status(200).json(rows[0])
+    }
+
+    // Handle set_time action (manual time edit while running)
+    if (updates.action === 'set_time' && updates.accumulated_seconds !== undefined) {
+      const now = new Date().toISOString()
+      await sql`
+        UPDATE time_logs
+        SET accumulated_seconds = ${updates.accumulated_seconds},
+            last_resumed_at = ${now},
+            updated_at = NOW()
         WHERE id = ${id}
       `
       const rows = await sql`SELECT * FROM time_logs WHERE id = ${id}`
