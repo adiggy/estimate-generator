@@ -571,6 +571,47 @@ app.get('/api/os-beta/search', async (req, res) => {
   }
 });
 
+// Feedback
+app.get('/api/os-beta/feedback', async (req, res) => {
+  try {
+    const items = await db.getFeedback();
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/os-beta/feedback', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Text is required' });
+    }
+    const item = await db.createFeedback(text.trim());
+    res.json(item);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/os-beta/feedback/:id', async (req, res) => {
+  try {
+    await db.deleteFeedback(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/os-beta/feedback', async (req, res) => {
+  try {
+    await db.deleteAllFeedback();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // OS Proposals - FIREWALLED: fetches from os_beta_proposals table (separate from live)
 app.get('/api/os-beta/proposals', async (req, res) => {
   try {

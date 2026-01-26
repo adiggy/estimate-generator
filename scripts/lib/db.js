@@ -808,6 +808,54 @@ function parseHours(value) {
   return match ? parseInt(match[1]) : 0
 }
 
+// ============================================================================
+// FEEDBACK
+// ============================================================================
+
+/**
+ * Get all feedback items
+ * @returns {Promise<Array>}
+ */
+async function getFeedback() {
+  const rows = await sql`
+    SELECT * FROM feedback
+    ORDER BY created_at DESC
+  `
+  return rows
+}
+
+/**
+ * Create a new feedback item
+ * @param {string} text - Feedback text
+ * @returns {Promise<Object>}
+ */
+async function createFeedback(text) {
+  const id = generateId('fb')
+  await sql`
+    INSERT INTO feedback (id, text, created_at)
+    VALUES (${id}, ${text}, NOW())
+  `
+  const rows = await sql`SELECT * FROM feedback WHERE id = ${id}`
+  return rows[0]
+}
+
+/**
+ * Delete a feedback item
+ * @param {string} id - Feedback ID
+ * @returns {Promise<void>}
+ */
+async function deleteFeedback(id) {
+  await sql`DELETE FROM feedback WHERE id = ${id}`
+}
+
+/**
+ * Delete all feedback items
+ * @returns {Promise<void>}
+ */
+async function deleteAllFeedback() {
+  await sql`DELETE FROM feedback`
+}
+
 module.exports = {
   sql,
   // Projects
@@ -846,6 +894,11 @@ module.exports = {
   // Stats & Search
   getStats,
   search,
+  // Feedback
+  getFeedback,
+  createFeedback,
+  deleteFeedback,
+  deleteAllFeedback,
   // Utilities
   generateId,
   slugify,

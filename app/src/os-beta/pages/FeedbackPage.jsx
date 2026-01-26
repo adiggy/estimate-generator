@@ -1,54 +1,71 @@
 import { useState, useEffect } from 'react'
-import { Plus, Copy, Trash2, CheckCircle, MessageSquare } from 'lucide-react'
+import { Plus, Copy, Trash2, CheckCircle, MessageSquare, Loader2 } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
 
-const STORAGE_KEY = 'adrial-os-feedback'
+const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
 export default function FeedbackPage() {
   const [items, setItems] = useState([])
   const [input, setInput] = useState('')
   const [copied, setCopied] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false)
   const [deleteItemId, setDeleteItemId] = useState(null)
 
-  // Load from localStorage on mount
+  // Load from database on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      try {
-        setItems(JSON.parse(saved))
-      } catch (e) {
-        console.error('Failed to parse saved feedback:', e)
-      }
-    }
+    loadFeedback()
   }, [])
 
-  // Save to localStorage whenever items change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  }, [items])
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (!input.trim()) return
-
-    const newItem = {
-      id: Date.now().toString(),
-      text: input.trim(),
-      createdAt: new Date().toISOString()
+  const loadFeedback = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/feedback`)
+      const data = await res.json()
+      setItems(data)
+    } catch (err) {
+      console.error('Failed to load feedback:', err)
     }
-
-    setItems(prev => [newItem, ...prev])
-    setInput('')
+    setLoading(false)
   }
 
-  const handleDelete = (id) => {
-    setItems(prev => prev.filter(item => item.id !== id))
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!input.trim() || submitting) return
+
+    setSubmitting(true)
+    try {
+      const res = await fetch(`${API_BASE}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input.trim() })
+      })
+      const newItem = await res.json()
+      setItems(prev => [newItem, ...prev])
+      setInput('')
+    } catch (err) {
+      console.error('Failed to create feedback:', err)
+    }
+    setSubmitting(false)
+  }
+
+  const handleDelete = async (id) => {
+    try {
+      await fetch(`${API_BASE}/feedback/${id}`, { method: 'DELETE' })
+      setItems(prev => prev.filter(item => item.id !== id))
+    } catch (err) {
+      console.error('Failed to delete feedback:', err)
+    }
     setDeleteItemId(null)
   }
 
-  const handleDeleteAll = () => {
-    setItems([])
+  const handleDeleteAll = async () => {
+    try {
+      await fetch(`${API_BASE}/feedback`, { method: 'DELETE' })
+      setItems([])
+    } catch (err) {
+      console.error('Failed to delete all feedback:', err)
+    }
     setDeleteAllConfirm(false)
   }
 
@@ -87,6 +104,14 @@ export default function FeedbackPage() {
     })
   }
 
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+      </div>
+    )
+  }
+
   return (
     <div className="p-4 sm:p-6 max-w-2xl mx-auto">
       {/* Header */}
@@ -110,13 +135,18 @@ export default function FeedbackPage() {
             placeholder="Bug, idea, or note..."
             className="flex-1 p-4 text-lg border border-slate-200 rounded-xl focus:border-brand-slate focus:outline-none"
             autoComplete="off"
+            disabled={submitting}
           />
           <button
             type="submit"
-            disabled={!input.trim()}
+            disabled={!input.trim() || submitting}
             className="px-6 py-4 bg-brand-slate text-white rounded-xl font-semibold hover:bg-brand-slate/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Plus className="w-6 h-6" />
+            {submitting ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <Plus className="w-6 h-6" />
+            )}
           </button>
         </div>
       </form>
@@ -170,7 +200,7 @@ export default function FeedbackPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-slate-900">{item.text}</p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {formatDate(item.createdAt)}
+                  {formatDate(item.created_at)}
                 </p>
               </div>
               <button
