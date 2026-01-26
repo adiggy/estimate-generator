@@ -41,64 +41,66 @@ function ProposalCard({ proposal, projectExists, onConvert }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-4 hover:border-slate-300 transition-colors">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-slate-900 truncate">{proposal.projectName}</h3>
-            <StatusBadge status={proposal.status} />
-            {projectExists && (
-              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                Project Created
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-slate-500 truncate">{proposal.clientName}</p>
-          <div className="flex items-center gap-4 mt-2 text-sm text-slate-600">
-            <span>{proposal.totalLowHrs}-{proposal.totalHighHrs} hrs</span>
-            <span>{formatMoney(proposal.totalLowHrs * rate * 100)} - {formatMoney(proposal.totalHighHrs * rate * 100)}</span>
-            <span>{proposal.phases?.length || 0} phases</span>
-          </div>
-        </div>
+      {/* Header: Title and badges */}
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <h3 className="font-semibold text-slate-900">{proposal.projectName}</h3>
+        <StatusBadge status={proposal.status} />
+        {projectExists && (
+          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+            Project Created
+          </span>
+        )}
+      </div>
 
-        <div className="flex items-center gap-2">
-          {/* Edit proposal in OS Beta editor */}
+      {/* Client name */}
+      <p className="text-sm text-slate-500 mb-2">{proposal.clientName}</p>
+
+      {/* Stats row */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 mb-4">
+        <span>{proposal.totalLowHrs}-{proposal.totalHighHrs} hrs</span>
+        <span>{formatMoney(proposal.totalLowHrs * rate * 100)} - {formatMoney(proposal.totalHighHrs * rate * 100)}</span>
+        <span>{proposal.phases?.length || 0} phases</span>
+      </div>
+
+      {/* Action buttons - stack on mobile, row on desktop */}
+      <div className="flex flex-col sm:flex-row gap-2">
+        {/* Edit proposal in OS Beta editor */}
+        <Link
+          to={`/dashboard/os-beta/proposals/${proposal.id}/edit`}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors min-h-[44px]"
+          title="Edit proposal in sandbox"
+        >
+          <Edit3 className="w-4 h-4" />
+          Edit
+        </Link>
+
+        {projectExists ? (
           <Link
-            to={`/dashboard/os-beta/proposals/${proposal.id}/edit`}
-            className="flex items-center gap-2 px-3 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-            title="Edit proposal in sandbox"
+            to={`/dashboard/os-beta/projects/${proposal.id}`}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
           >
-            <Edit3 className="w-4 h-4" />
-            Edit
+            Visit Project
+            <ExternalLink className="w-4 h-4" />
           </Link>
-
-          {projectExists ? (
-            <Link
-              to={`/dashboard/os-beta/projects/${proposal.id}`}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Visit Project
-              <ExternalLink className="w-4 h-4" />
-            </Link>
-          ) : (
-            <button
-              onClick={handleConvert}
-              disabled={converting}
-              className="flex items-center gap-2 px-4 py-2 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/90 disabled:opacity-50 transition-colors"
-            >
-              {converting ? (
-                <>
-                  <Clock className="w-4 h-4 animate-spin" />
-                  Converting...
-                </>
-              ) : (
-                <>
-                  Convert to Project
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
+        ) : (
+          <button
+            onClick={handleConvert}
+            disabled={converting}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/90 disabled:opacity-50 transition-colors min-h-[44px]"
+          >
+            {converting ? (
+              <>
+                <Clock className="w-4 h-4 animate-spin" />
+                Converting...
+              </>
+            ) : (
+              <>
+                Convert to Project
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        )}
       </div>
 
       {/* Phase preview */}
@@ -241,12 +243,12 @@ export default function ProposalsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-6">
         {['all', 'draft', 'sent', 'accepted'].map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+            className={`px-4 py-2.5 text-sm rounded-lg transition-colors min-h-[44px] ${
               filter === f
                 ? 'bg-brand-red/10 text-brand-red border border-brand-red'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-transparent'
