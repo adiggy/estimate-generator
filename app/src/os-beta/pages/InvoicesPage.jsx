@@ -1,26 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, FileText, Send, CheckCircle, XCircle, ExternalLink, Server, FolderKanban, ChevronDown, ChevronUp, Edit2, Check, X, Trash2 } from 'lucide-react'
+import { Plus, FileText, Send, CheckCircle, XCircle, ExternalLink, Server, FolderKanban, ChevronDown, ChevronUp, Edit2, Check, X, Trash2, Calendar } from 'lucide-react'
+import ConfirmModal from '../components/ConfirmModal'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
-
-// Detect hosting invoices: recurring amounts (2+ occurrences) under $100
-// Hosting is typically $37-39 or $79, always under $100
-// This excludes recurring project payments like $1000 milestones
-const HOSTING_MAX = 10000 // $100 in cents
-
-function getHostingAmounts(invoices) {
-  const amountCounts = {}
-  invoices.forEach(inv => {
-    amountCounts[inv.total] = (amountCounts[inv.total] || 0) + 1
-  })
-  // Amounts that appear at least twice AND are under $100 are hosting
-  return new Set(
-    Object.entries(amountCounts)
-      .filter(([amount, count]) => count >= 2 && parseInt(amount) < HOSTING_MAX)
-      .map(([amount]) => parseInt(amount))
-  )
-}
 
 const STATUS_STYLES = {
   draft: 'bg-slate-100 text-slate-600',
@@ -155,7 +138,7 @@ function EditableLineItem({ item, index, onUpdate, onDelete, rate }) {
   )
 }
 
-function InvoiceRow({ invoice, onUpdate }) {
+function InvoiceRow({ invoice, onUpdate, onDelete }) {
   const [expanded, setExpanded] = useState(false)
   const [lineItems, setLineItems] = useState(invoice.line_items || [])
   const [saving, setSaving] = useState(false)
@@ -172,6 +155,38 @@ function InvoiceRow({ invoice, onUpdate }) {
       onUpdate(updated)
     } catch (err) {
       console.error('Failed to update invoice:', err)
+    }
+  }
+
+  const handleHostingToggle = async () => {
+    try {
+      const newIsHosting = !invoice.is_hosting
+      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          is_hosting: newIsHosting,
+          billing_cycle: newIsHosting ? (invoice.billing_cycle || 'monthly') : null
+        })
+      })
+      const updated = await res.json()
+      onUpdate(updated)
+    } catch (err) {
+      console.error('Failed to toggle hosting:', err)
+    }
+  }
+
+  const handleBillingCycleChange = async (cycle) => {
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billing_cycle: cycle })
+      })
+      const updated = await res.json()
+      onUpdate(updated)
+    } catch (err) {
+      console.error('Failed to update billing cycle:', err)
     }
   }
 
@@ -229,8 +244,45 @@ function InvoiceRow({ invoice, onUpdate }) {
           <p className="text-sm text-slate-500">{formatDate(invoice.created_at)}</p>
         </div>
         <div className="flex items-start gap-3">
+          {/* Hosting badge/toggle */}
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleHostingToggle()
+              }}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors ${
+                invoice.is_hosting
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+              }`}
+              title={invoice.is_hosting ? 'Click to mark as non-hosting' : 'Click to mark as hosting'}
+            >
+              <Server className="w-3 h-3" />
+              {invoice.is_hosting ? 'Hosting' : 'Project'}
+            </button>
+            {invoice.is_hosting && (
+              <select
+                value={invoice.billing_cycle || 'monthly'}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  handleBillingCycleChange(e.target.value)
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] px-1 py-0.5 rounded bg-slate-100 text-slate-600 border-0"
+              >
+                <option value="monthly">Monthly</option>
+                <option value="annual">Annual</option>
+              </select>
+            )}
+          </div>
           <div className="text-right">
             <p className="text-xl font-bold text-slate-900">{formatMoney(currentTotal)}</p>
+            {invoice.is_hosting && invoice.billing_cycle === 'annual' && (
+              <p className="text-xs text-purple-600">
+                {formatMoney(Math.round(currentTotal / 12))}/mo
+              </p>
+            )}
             <select
               value={invoice.status}
               onChange={(e) => {
@@ -246,6 +298,16 @@ function InvoiceRow({ invoice, onUpdate }) {
               <option value="void">Void</option>
             </select>
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onDelete(invoice)
+            }}
+            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+            title="Delete invoice"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <button className="p-1 text-slate-400 mt-1">
             {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
           </button>
@@ -593,10 +655,12 @@ export default function InvoicesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [invoices, setInvoices] = useState([])
   const [projects, setProjects] = useState([])
+  const [hostingProjects, setHostingProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [activeTab, setActiveTab] = useState('projects') // 'projects' or 'hosting'
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState(null) // invoice object to delete
 
   useEffect(() => {
     loadData()
@@ -615,16 +679,19 @@ export default function InvoicesPage() {
     setLoading(true)
     try {
       // Always fetch ALL invoices so we can detect recurring amounts properly
-      const [invoicesRes, projectsRes] = await Promise.all([
+      const [invoicesRes, projectsRes, hostingRes] = await Promise.all([
         fetch(`${API_BASE}/invoices`),
-        fetch(`${API_BASE}/projects?exclude_hosting=true`)
+        fetch(`${API_BASE}/projects?exclude_hosting=true`),
+        fetch(`${API_BASE}/projects?billing_platform=bonsai_legacy`)
       ])
 
       const invoicesData = await invoicesRes.json()
       const projectsData = await projectsRes.json()
+      const hostingData = await hostingRes.json()
 
       setInvoices(invoicesData)
       setProjects(projectsData)
+      setHostingProjects(hostingData)
     } catch (err) {
       console.error('Failed to load data:', err)
     }
@@ -639,10 +706,19 @@ export default function InvoicesPage() {
     setInvoices(prev => [newInvoice, ...prev])
   }
 
-  // Split invoices by type - recurring amounts under $100 are hosting charges
-  const hostingAmounts = getHostingAmounts(invoices)
-  const allHostingInvoices = invoices.filter(i => hostingAmounts.has(i.total))
-  const allProjectInvoices = invoices.filter(i => !hostingAmounts.has(i.total))
+  const handleDeleteInvoice = async () => {
+    if (!deleteConfirm) return
+    try {
+      await fetch(`${API_BASE}/invoices/${deleteConfirm.id}`, { method: 'DELETE' })
+      setInvoices(prev => prev.filter(inv => inv.id !== deleteConfirm.id))
+    } catch (err) {
+      console.error('Failed to delete invoice:', err)
+    }
+  }
+
+  // Split invoices by type using is_hosting flag
+  const allHostingInvoices = invoices.filter(i => i.is_hosting)
+  const allProjectInvoices = invoices.filter(i => !i.is_hosting)
 
   // Apply status filter client-side
   const filterByStatus = (list) => statusFilter ? list.filter(i => i.status === statusFilter) : list
@@ -658,25 +734,33 @@ export default function InvoicesPage() {
     paid: currentInvoices.filter(i => i.status === 'paid').reduce((sum, i) => sum + i.total, 0)
   }
 
-  // Calculate MRR for hosting tab (average of last 3 months of paid hosting invoices)
+  // Calculate MRR: sum of most recent hosting invoice per ACTIVE hosting client
+  // For annual billing, divide by 12 for monthly rate
   const calculateMRR = () => {
-    const paidHosting = hostingInvoices.filter(i => i.status === 'paid')
-    if (paidHosting.length === 0) return 0
+    // Sort hosting invoices by date descending to get most recent first
+    const sortedHosting = [...allHostingInvoices]
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
-    // Get unique months with paid invoices
-    const monthlyTotals = {}
-    paidHosting.forEach(inv => {
-      const date = new Date(inv.paid_at || inv.created_at)
-      const monthKey = `${date.getFullYear()}-${date.getMonth()}`
-      monthlyTotals[monthKey] = (monthlyTotals[monthKey] || 0) + inv.total
+    // Get most recent fee per client (with monthly rate calculation)
+    const clientFees = {}
+    sortedHosting.forEach(inv => {
+      if (!clientFees[inv.client_id]) {
+        // For annual billing, divide by 12 for monthly rate
+        const monthlyAmount = inv.billing_cycle === 'annual'
+          ? Math.round(inv.total / 12)
+          : inv.total
+        clientFees[inv.client_id] = monthlyAmount
+      }
     })
 
-    const months = Object.values(monthlyTotals)
-    if (months.length === 0) return 0
+    // Only sum fees for clients with active hosting projects
+    const activeHostingClients = new Set(
+      hostingProjects.filter(p => p.status === 'active').map(p => p.client_id)
+    )
 
-    // Average of available months (up to 3)
-    const recentMonths = months.slice(-3)
-    return Math.round(recentMonths.reduce((a, b) => a + b, 0) / recentMonths.length)
+    return Object.entries(clientFees)
+      .filter(([clientId]) => activeHostingClients.has(clientId))
+      .reduce((sum, [, fee]) => sum + fee, 0)
   }
 
   const mrr = calculateMRR()
@@ -787,6 +871,7 @@ export default function InvoicesPage() {
               key={invoice.id}
               invoice={invoice}
               onUpdate={handleInvoiceUpdate}
+              onDelete={setDeleteConfirm}
             />
           ))}
         </div>
@@ -800,6 +885,17 @@ export default function InvoicesPage() {
         existingInvoices={invoices}
         onCreateInvoice={handleCreateInvoice}
         onRefresh={loadData}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={handleDeleteInvoice}
+        title="Delete Invoice"
+        message={`Delete invoice "${deleteConfirm?.id}" for ${formatMoney(deleteConfirm?.total)}?\n\nThis will also unmark any associated time entries as invoiced.`}
+        confirmText="Delete"
+        danger
       />
     </div>
   )

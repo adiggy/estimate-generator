@@ -7,6 +7,60 @@
 
 ---
 
+## ⚠️ CRITICAL ARCHITECTURE RULES
+
+These rules exist because bugs occurred when they were violated. DO NOT modify code in ways that break these rules.
+
+### 1. Firewall Between Proposals and OS-Beta
+
+**The live proposals system and OS-beta are COMPLETELY SEPARATE.**
+
+- **Proposals** live at root URL (`/`, `/{proposal-id}`)
+- **OS-Beta** lives at `/dashboard/os-beta/*`
+- OS-Beta code must NEVER modify the `proposals` table
+- When converting a proposal to a project, create a NEW record in `projects` table
+- DO NOT update `proposal.status` when converting - proposals stay "draft" forever
+
+**Why:** A bug once caused 4 client-facing proposals to show "accepted" status when the conversion code modified them.
+
+### 2. Scheduler Must Preserve Chunk Order
+
+**The scheduler must NOT overwrite `phase_order` or `draft_order` fields.**
+
+- `phase_order` = which phase a chunk belongs to (set during proposal conversion)
+- `draft_order` = sequence within a phase (set during proposal conversion)
+- The scheduler only sets `draft_scheduled_start` and `draft_scheduled_end`
+
+**Why:** A bug once overwrote `draft_order` during scheduling, causing chunks to display out of sequence.
+
+### 3. Scheduler Must Not Infinite Loop
+
+**The scheduler must advance `slotIndex` even when no slots are available.**
+
+```javascript
+// CORRECT - always advance slotIndex
+if (scheduledSlots.length > 0) {
+  // ... schedule the chunk
+  slotIndex = tempSlotIndex
+} else {
+  slotIndex = tempSlotIndex  // STILL ADVANCE even on failure
+}
+```
+
+**Why:** A bug caused the server to hang at 100% CPU when the scheduler got stuck in an infinite loop.
+
+### 4. Two API Implementations Must Stay in Sync
+
+**Both `server.js` (local) and `app/api/os-beta.js` (Vercel) implement the same APIs.**
+
+When modifying scheduler, time tracking, or other features:
+1. Update `server.js` for local development
+2. Update `app/api/os-beta.js` for production
+
+**Why:** Features can work locally but break in production if only one file is updated.
+
+---
+
 ## Overview
 
 This is the **Agency Operating System** for Adrial Designs, combining:
@@ -490,6 +544,7 @@ The OS extends the existing Neon database with these tables:
 | `npm run invoice --project {id}` | Generate invoice for project |
 | `npm run chunker {project-id}` | Break project into schedulable chunks |
 | `npm run schedule --week` | Schedule chunks for coming week |
+| `npm run quick-project input/file.md` | Create project from lightweight markdown input |
 
 ### API Endpoints
 
@@ -532,12 +587,13 @@ All OS endpoints are under `/api/os-beta/`:
 | `/dashboard/os-beta/proposals` | Proposals | List of OS Beta proposals |
 | `/dashboard/os-beta/proposals/{id}/edit` | Proposal Edit | Edit proposal with delete option |
 | `/dashboard/os-beta/projects` | Projects | Smart grid of active projects (excludes hosting) |
-| `/dashboard/os-beta/projects/{id}` | Project Details | Metadata, phases, chunks, time logs |
+| `/dashboard/os-beta/projects/{id}` | Project Details | Metadata, phases, chunks, Gantt timeline |
 | `/dashboard/os-beta/hosting` | Hosting | Legacy Bonsai clients with MRR display |
 | `/dashboard/os-beta/time` | Time Tracking | Mobile-first timer with editable display |
 | `/dashboard/os-beta/invoices` | Invoices | Invoice list, creation, editing |
 | `/dashboard/os-beta/invoices?create=1` | New Invoice | Auto-opens create invoice modal |
-| `/dashboard/os-beta/schedule` | Schedule | Calendar view of scheduled work |
+| `/dashboard/os-beta/schedule` | Schedule | Weekly schedule with draft generation |
+| `/dashboard/os-beta/timeline` | Master Timeline | Gantt view of ALL projects interleaved |
 
 ### UI Features
 
@@ -573,15 +629,119 @@ All OS endpoints are under `/api/os-beta/`:
 - `done` - Blue (#3b82f6)
 - `invoiced` - Purple (#8b5cf6)
 
+### Scheduling System (CRITICAL FEATURES)
+
+The scheduler assigns chunks to time slots while respecting all constraints.
+
+**⚠️ CRITICAL: These features have been lost before - DO NOT remove them:**
+1. Configurable start date
+2. Calendar rocks (existing events)
+3. Interleaved scheduling (round-robin)
+4. Phase/draft ordering preservation
+
+**Work Hours (Adrial's schedule):**
+- **Start:** 12:00 PM
+- **End:** 7:30 PM (8 slots available, 12-7pm + partial)
+- **Max hours/day:** 7 schedulable hours
+- **Weekends:** Off (Saturday & Sunday not scheduled)
+
+**Scheduling Features:**
+1. **Configurable start date** - POST body accepts `startDate` (e.g., `"2026-01-26"`)
+   - If not provided, defaults to today (if weekday) or next Monday (if weekend)
+2. **Calendar rocks** - Reads Google Calendar to avoid existing events
+   - Fetches events from reference calendar
+   - Marks those time slots as unavailable
+   - Includes all-day events (blocks entire day)
+3. **Interleaved scheduling** - Round-robin through ALL active projects
+   - Each project gets 1 chunk scheduled, then moves to next project
+   - Ensures all projects make progress each week
+   - NOT sequential (don't finish one project before starting another)
+4. **Phase ordering** - Respects `phase_order` and `draft_order` within each project
+5. **Draft vs Published** - Schedule generates as draft, must be published to commit
+6. **Multi-week support** - Calculates weeks needed from total hours, schedules all chunks
+
+**API: Schedule Generation**
+```bash
+# Generate schedule starting today
+curl -X POST http://localhost:3002/api/os-beta/schedule/generate
+
+# Generate schedule from specific date
+curl -X POST http://localhost:3002/api/os-beta/schedule/generate \
+  -H "Content-Type: application/json" \
+  -d '{"startDate": "2026-01-26"}'
+```
+
+**Response includes:**
+- `scheduled` - Number of chunks scheduled
+- `projects` - Number of projects included
+- `rocksAvoided` - Calendar events that were avoided
+- `dateRange` - Start and end dates of schedule
+
+**Chunk Ordering:**
+- Chunks have `phase_order` (which phase) and `draft_order` (order within phase)
+- SQL: `ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST`
+- The scheduler MUST NOT overwrite `phase_order` or `draft_order` - these are set during proposal conversion
+
+**Google Calendar Integration:**
+- **Reference calendar** (read): Contains existing events ("rocks") to schedule around
+- **Work calendar** (write): Where published chunks are added as events
+- Environment variables: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFERENCE_CALENDAR_ID`
+
+**Constants (server.js) - DO NOT CHANGE WITHOUT PERMISSION:**
+```javascript
+WORK_START_HOUR = 12  // 12:00 PM - Adrial starts work at noon
+WORK_END_HOUR = 20    // 8:00 PM (slot math, actual end ~7:30)
+MAX_HOURS_PER_DAY = 7 // ~7 schedulable hours per day
+```
+
+**Schedule Page UI Features:**
+- **Week View:** Calendar grid showing Mon-Fri, 12 PM - 7 PM
+  - Navigate between weeks with arrow buttons
+  - Shows rocks (calendar events) in gray
+  - Shows scheduled chunks in red (brand color)
+  - Click a chunk to navigate to project
+- **List View:** Day-by-day list of scheduled chunks
+  - Toggle between Week/List views with button group
+- **Draft Summary:** Shows stats (chunks, hours, weeks, projects)
+- **Revenue Forecast:** Projects billable revenue by week (shown below schedule)
+- **Publish to Calendar:** Commits draft to Google Calendar
+
+### Quick Project Creation (Skip Proposals)
+
+For in-progress projects that don't need full proposals, use the lightweight input format:
+
+**Markdown format:**
+```markdown
+# Project Name
+Client: Client Name
+Priority: high
+Description: Brief description
+
+## Phase 1 Name (10h)
+## Phase 2 Name (8h)
+
+## Phase 3 - With Tasks
+- Task A (2h)
+- Task B (3h)
+```
+
+**Priority values:** `high` (2), `priority` (1), `normal` (0), `low` (-1), `maybe` (-2)
+
+**Run:** `npm run quick-project input/my-project.md`
+
 ### Workflow: From Proposal to Invoice
 
 1. **Create Proposal** → Generate proposal JSON, push to Neon
 2. **Convert to Project** → Create project record linked to proposal
 3. **Break into Chunks** → Use `npm run chunker` or UI to create 1-3 hour work units
-4. **Schedule Work** → Assign chunks to calendar slots
+4. **Schedule Work** → Generate draft schedule, review in UI, publish to calendar
 5. **Track Time** → Start/stop timer or log completed hours
 6. **Generate Invoice** → Select unbilled time, create invoice
 7. **Send & Track** → Mark invoice sent, track payment
+
+**Alternative path (skip proposal):**
+1. **Create Quick Project** → `npm run quick-project input/file.md`
+2. Continue from step 4 above
 
 ### Legacy Data Import
 
@@ -597,6 +757,40 @@ The system imported 499 historical projects from Airtable. Status mapping:
 | PAUSED/FUTURE | paused | 0 |
 | LATER? | paused | -1 |
 | MAYBE | paused | -2 |
+
+### Known Bug Fixes (DO NOT REINTRODUCE)
+
+This section documents bugs that were fixed. When modifying related code, ensure these bugs don't return.
+
+**Bug 1: Proposal Status Leak**
+- **Symptom:** Proposals on live site showed "accepted" status
+- **Cause:** `server.js` convert-to-project code updated proposal.status
+- **Fix:** Removed status update code - projects are created independently
+- **Location:** `server.js` line ~785
+
+**Bug 2: Scheduler Infinite Loop**
+- **Symptom:** Server hung at 100% CPU during schedule generation
+- **Cause:** When no slots available for a chunk, `slotIndex` didn't advance
+- **Fix:** Always advance `slotIndex` even when `scheduledSlots.length === 0`
+- **Location:** `server.js` schedule/generate endpoint
+
+**Bug 3: Chunk Order Corruption**
+- **Symptom:** Chunks displayed out of sequence after scheduling
+- **Cause:** Scheduler was setting `draft_order = ${i}` during scheduling
+- **Fix:** Removed draft_order modification - only set `draft_scheduled_start/end`
+- **Location:** `server.js` schedule/generate endpoint
+
+**Bug 4: Timeline Phases Stacking**
+- **Symptom:** All phases rendered at same vertical position on Gantt view
+- **Cause:** All phases had `top: '8px'` instead of calculated row positions
+- **Fix:** Calculate `rowTop = idx * 48 + 8` for each phase
+- **Location:** `ProjectDetailsPage.jsx` timeline rendering
+
+**Bug 5: Features Dropped During Refactoring**
+- **Symptom:** Scheduler missing lunch break, rocks, start date config
+- **Cause:** Code refactoring removed features without documentation
+- **Fix:** Document ALL scheduler features in CLAUDE.md
+- **Prevention:** Always check CLAUDE.md before modifying scheduler
 
 ### Files Reference
 
@@ -620,13 +814,72 @@ The system imported 499 historical projects from Airtable. Status mapping:
 | `OsApp.jsx` | Main shell with sidebar, header, search |
 | `components/ConfirmModal.jsx` | Reusable confirmation dialog |
 | `pages/ProjectsPage.jsx` | Projects grid with status filters |
-| `pages/ProjectDetailsPage.jsx` | Project metadata, phases, time logs |
-| `pages/ProposalsPage.jsx` | OS Beta proposals list |
+| `pages/ProjectDetailsPage.jsx` | Project metadata, phases, Gantt timeline |
+| `pages/ProposalsPage.jsx` | OS Beta proposals list with project links |
 | `pages/ProposalEditPage.jsx` | Proposal editor with delete |
 | `pages/HostingPage.jsx` | Hosting clients with MRR |
-| `pages/TimePage.jsx` | Timer with editable display |
+| `pages/TimePage.jsx` | Timer with editable display (no spinners) |
 | `pages/InvoicesPage.jsx` | Invoice list, create modal, line item editing |
-| `pages/SchedulePage.jsx` | Calendar/schedule view |
+| `pages/SchedulePage.jsx` | Week view calendar + list view + revenue forecast |
+| `pages/MasterTimelinePage.jsx` | Gantt view of ALL projects interleaved |
+
+### Conversion From Proposal to Project
+
+When converting a proposal to a project:
+
+1. **Create project record** in `projects` table with `proposal_id` link
+2. **Create chunks** from proposal phases (1-3 hour chunks based on phase hours)
+3. **Set phase_order and draft_order** to preserve sequence
+4. **DO NOT modify the proposal** - leave its status as "draft"
+
+The `proposal_id` field links back to the source proposal for reference.
+
+### Time Tracking Features
+
+**Timer UI:**
+- Large HH:MM:SS display (clickable to edit)
+- Number inputs have NO spinner buttons (just type)
+- Pause/Resume functionality with accumulated time
+- Finalize rounds UP to nearest 15 minutes
+
+**Time Log States:**
+- `active` - Timer currently running
+- `paused` - Timer paused, accumulating time saved
+- `stopped` - Timer stopped but not finalized
+- `finalized` - Ready for invoicing (15-min rounded)
+
+### Master Timeline (Gantt View)
+
+Shows ALL active projects on a single horizontal timeline:
+- Each project is a colored bar spanning its scheduled date range
+- Colors cycle through 10 distinct options
+- Click a project bar to navigate to project details
+- Shows progress (done hours / total hours)
+- Draft schedules shown with dashed border
+
+---
+
+## Development Tips
+
+### Starting Development
+```bash
+npm start  # Starts both API (3002) and Vite (5173)
+```
+
+### Testing Changes
+1. Make code changes
+2. Vite hot-reloads automatically
+3. For API changes, restart with `npm run api`
+
+### Database Changes
+- Schema is in Neon PostgreSQL
+- Use `scripts/schema_extension.sql` for reference
+- Test locally before deploying
+
+### Deploying to Production
+1. Push to main branch
+2. Vercel auto-deploys
+3. API routes in `app/api/` are serverless functions
 
 ---
 

@@ -782,14 +782,8 @@ app.post('/api/os-beta/proposals/:id/convert', async (req, res) => {
       phaseOrder++;
     }
 
-    // Update proposal status to "accepted" since it's now a project
-    proposal.status = 'accepted';
-    await db.sql`
-      UPDATE proposals
-      SET data = ${JSON.stringify(proposal)}::jsonb,
-          updated_at = NOW()
-      WHERE id = ${req.params.id}
-    `;
+    // NOTE: NOT updating proposal status - maintain firewall between OS-beta and live proposals
+    // The project now exists independently in the projects table
 
     res.json({
       project,
@@ -975,93 +969,280 @@ app.get('/api/os-beta/schedule/draft/chunks', async (req, res) => {
   }
 });
 
-// Schedule - Generate draft (simplified for local dev - use npm run schedule for full generation)
+// Schedule - Generate draft with INTERLEAVED scheduling
+// Features:
+// - Configurable start date (defaults to today or next Monday)
+// - Work hours: 12:00 PM - 7:30 PM
+// - 1-hour lunch break at 3:00 PM
+// - Calendar "rocks" - avoids existing Google Calendar events
+// - Round-robin through all active projects so each gets equal progress
 app.post('/api/os-beta/schedule/generate', async (req, res) => {
   try {
-    // Get pending chunks
-    const chunks = await db.sql`
+    const WORK_START_HOUR = 12  // 12:00 PM
+    const WORK_END_HOUR = 20    // 8:00 PM (slot math, actual end ~7:30)
+    const MAX_HOURS_PER_DAY = 7 // ~7 schedulable hours per day
+
+    // Get configurable start date from request body
+    let startDate
+    if (req.body.startDate) {
+      startDate = new Date(req.body.startDate)
+      startDate.setHours(WORK_START_HOUR, 0, 0, 0)
+    } else {
+      // Default to today if it's a weekday, otherwise next Monday
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+        // Today is a weekday, start today
+        startDate = new Date(now)
+        startDate.setHours(WORK_START_HOUR, 0, 0, 0)
+      } else {
+        // Weekend, start next Monday
+        const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
+        startDate = new Date(now)
+        startDate.setDate(now.getDate() + daysUntilMonday)
+        startDate.setHours(WORK_START_HOUR, 0, 0, 0)
+      }
+    }
+
+    // Get pending chunks grouped by project, ordered within each project
+    const allChunks = await db.sql`
       SELECT c.*, p.name as project_name, p.client_id, p.priority, p.last_touched_at
       FROM chunks c
       JOIN projects p ON c.project_id = p.id
       WHERE c.status = 'pending' AND p.status = 'active'
-      ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST
-    `;
+      ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST, c.phase_order ASC NULLS LAST, c.draft_order ASC NULLS LAST
+    `
 
-    if (chunks.length === 0) {
-      return res.status(400).json({ error: 'No pending chunks to schedule' });
+    if (allChunks.length === 0) {
+      return res.status(400).json({ error: 'No pending chunks to schedule' })
     }
 
-    // Simple scheduling - next week Mon-Fri, 9-5, max 6 hours/day
-    const now = new Date();
-    const dayOfWeek = now.getDay();
-    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
-    const monday = new Date(now);
-    monday.setDate(now.getDate() + daysUntilMonday);
-    monday.setHours(9, 0, 0, 0);
+    // Calculate total hours and weeks needed
+    const totalHoursNeeded = allChunks.reduce((sum, c) => sum + c.hours, 0)
+    const hoursPerWeek = MAX_HOURS_PER_DAY * 5
+    const weeksNeeded = Math.ceil(totalHoursNeeded / hoursPerWeek) + 1
+
+    // End date for calendar fetch
+    const endDateForCalendar = new Date(startDate)
+    endDateForCalendar.setDate(startDate.getDate() + (weeksNeeded * 7))
+    endDateForCalendar.setHours(23, 59, 59, 999)
+
+    // Fetch calendar rocks (existing events to avoid)
+    let rocks = []
+    let rocksAvoided = 0
+    try {
+      const tokenRows = await db.sql`SELECT access_token, refresh_token, expires_at FROM oauth_tokens WHERE provider = 'google'`
+      if (tokenRows.length > 0) {
+        let accessToken = tokenRows[0].access_token
+        const expiresAt = new Date(tokenRows[0].expires_at)
+
+        // Refresh token if expired
+        if (expiresAt < new Date() && tokenRows[0].refresh_token) {
+          const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              client_id: process.env.GOOGLE_CLIENT_ID,
+              client_secret: process.env.GOOGLE_CLIENT_SECRET,
+              refresh_token: tokenRows[0].refresh_token,
+              grant_type: 'refresh_token'
+            })
+          })
+          const refreshed = await refreshRes.json()
+          if (refreshed.access_token) {
+            accessToken = refreshed.access_token
+            const newExpires = new Date(Date.now() + refreshed.expires_in * 1000)
+            await db.sql`UPDATE oauth_tokens SET access_token = ${accessToken}, expires_at = ${newExpires.toISOString()}, updated_at = NOW() WHERE provider = 'google'`
+          }
+        }
+
+        // Fetch events from reference calendar
+        const calendarId = process.env.GOOGLE_REFERENCE_CALENDAR_ID || 'primary'
+        const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`)
+        url.searchParams.set('timeMin', startDate.toISOString())
+        url.searchParams.set('timeMax', endDateForCalendar.toISOString())
+        url.searchParams.set('singleEvents', 'true')
+        url.searchParams.set('orderBy', 'startTime')
+        url.searchParams.set('maxResults', '500')
+
+        const calRes = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${accessToken}` } })
+        if (calRes.ok) {
+          const calData = await calRes.json()
+          rocks = (calData.items || []).map(event => {
+            if (event.start?.dateTime && event.end?.dateTime) {
+              return { start: new Date(event.start.dateTime), end: new Date(event.end.dateTime), title: event.summary }
+            }
+            if (event.start?.date) {
+              // All-day event - block the whole work day
+              const date = new Date(event.start.date)
+              return {
+                start: new Date(date.setHours(WORK_START_HOUR, 0, 0, 0)),
+                end: new Date(date.setHours(WORK_END_HOUR, 0, 0, 0)),
+                title: event.summary || 'All-day'
+              }
+            }
+            return null
+          }).filter(Boolean)
+        }
+      }
+    } catch (err) {
+      console.error('Calendar fetch error:', err)
+    }
+
+    // Generate hourly time slots for scheduling
+    const slots = []
+    const current = new Date(startDate)
+    while (current <= endDateForCalendar) {
+      const dow = current.getDay()
+      if (dow !== 0 && dow !== 6) { // Skip weekends
+        for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
+          const slotStart = new Date(current)
+          slotStart.setHours(hour, 0, 0, 0)
+          const slotEnd = new Date(slotStart)
+          slotEnd.setHours(hour + 1, 0, 0, 0)
+          slots.push({ start: slotStart, end: slotEnd, available: true })
+        }
+      }
+      current.setDate(current.getDate() + 1)
+    }
+
+    // Mark calendar rocks as unavailable
+    for (const slot of slots) {
+      for (const rock of rocks) {
+        if (slot.start < rock.end && slot.end > rock.start) {
+          slot.available = false
+          rocksAvoided++
+          break
+        }
+      }
+    }
+
+    // Group chunks by project (maintaining order within each project)
+    const projectQueues = new Map()
+    const projectOrder = []
+
+    for (const chunk of allChunks) {
+      if (!projectQueues.has(chunk.project_id)) {
+        projectQueues.set(chunk.project_id, {
+          id: chunk.project_id,
+          name: chunk.project_name,
+          priority: chunk.priority,
+          chunks: []
+        })
+        projectOrder.push(chunk.project_id)
+      }
+      projectQueues.get(chunk.project_id).chunks.push(chunk)
+    }
 
     // Clear existing draft
-    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`;
-    await db.sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`;
+    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL`
+    await db.sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`
 
-    // Generate schedule
-    const scheduled = [];
-    let currentSlot = new Date(monday);
-    let hoursToday = 0;
+    // Interleaved scheduling - round-robin through projects
+    const scheduled = []
+    let slotIndex = 0
+    let hoursScheduledToday = 0
+    let currentDay = null
+    let projectIndex = 0
+    let activeProjects = projectOrder.filter(id => projectQueues.get(id).chunks.length > 0)
 
-    for (const chunk of chunks) {
-      // Skip weekends
-      while (currentSlot.getDay() === 0 || currentSlot.getDay() === 6) {
-        currentSlot.setDate(currentSlot.getDate() + 1);
-        currentSlot.setHours(9, 0, 0, 0);
-        hoursToday = 0;
-      }
+    while (activeProjects.length > 0 && slotIndex < slots.length) {
+      // Get next project in round-robin
+      const projectId = activeProjects[projectIndex % activeProjects.length]
+      const project = projectQueues.get(projectId)
 
-      // Check if we've hit daily limit
-      if (hoursToday >= 6 || currentSlot.getHours() >= 17) {
-        currentSlot.setDate(currentSlot.getDate() + 1);
-        currentSlot.setHours(9, 0, 0, 0);
-        hoursToday = 0;
-        // Skip weekends again
-        while (currentSlot.getDay() === 0 || currentSlot.getDay() === 6) {
-          currentSlot.setDate(currentSlot.getDate() + 1);
+      if (project.chunks.length > 0) {
+        const chunk = project.chunks[0] // Peek at next chunk
+        const hoursNeeded = chunk.hours
+        let hoursAssigned = 0
+        const scheduledSlots = []
+
+        // Find consecutive available slots for this chunk
+        let tempSlotIndex = slotIndex
+        while (hoursAssigned < hoursNeeded && tempSlotIndex < slots.length) {
+          const slot = slots[tempSlotIndex]
+          const slotDay = slot.start.toDateString()
+
+          // Track hours per day
+          if (currentDay !== slotDay) {
+            currentDay = slotDay
+            hoursScheduledToday = 0
+          }
+
+          if (!slot.available || hoursScheduledToday >= MAX_HOURS_PER_DAY) {
+            tempSlotIndex++
+            continue
+          }
+
+          slot.available = false
+          scheduledSlots.push(slot)
+          hoursAssigned++
+          hoursScheduledToday++
+          tempSlotIndex++
+        }
+
+        if (scheduledSlots.length > 0) {
+          project.chunks.shift() // Actually remove the chunk now
+          scheduled.push({
+            chunk,
+            start: scheduledSlots[0].start,
+            end: scheduledSlots[scheduledSlots.length - 1].end
+          })
+          slotIndex = tempSlotIndex
+        } else {
+          // No slots available for this chunk - move past exhausted slots
+          slotIndex = tempSlotIndex
         }
       }
 
-      const start = new Date(currentSlot);
-      const end = new Date(currentSlot);
-      end.setHours(start.getHours() + chunk.hours);
+      // Move to next project
+      projectIndex++
 
-      scheduled.push({ chunk, start, end });
+      // Remove projects that are done
+      activeProjects = activeProjects.filter(id => projectQueues.get(id).chunks.length > 0)
 
-      currentSlot.setHours(end.getHours());
-      hoursToday += chunk.hours;
+      // Safety: if we've exhausted all slots, stop
+      if (slotIndex >= slots.length) break
     }
 
     // Save draft
-    const draftId = `draft-${Date.now().toString(36)}`;
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    const draftId = `draft-${Date.now().toString(36)}`
+    const lastScheduled = scheduled[scheduled.length - 1]
+    const endDate = lastScheduled ? lastScheduled.end : startDate
 
     await db.sql`
       INSERT INTO schedule_drafts (id, week_start, week_end, total_hours, chunk_count, rocks_avoided)
-      VALUES (${draftId}, ${monday.toISOString().split('T')[0]}, ${friday.toISOString().split('T')[0]},
-        ${scheduled.reduce((sum, s) => sum + s.chunk.hours, 0)}, ${scheduled.length}, 0)
-    `;
+      VALUES (${draftId}, ${startDate.toISOString().split('T')[0]}, ${endDate.toISOString().split('T')[0]},
+        ${scheduled.reduce((sum, s) => sum + s.chunk.hours, 0)}, ${scheduled.length}, ${rocksAvoided})
+    `
 
-    for (let i = 0; i < scheduled.length; i++) {
-      const { chunk, start, end } = scheduled[i];
+    for (const { chunk, start, end } of scheduled) {
       await db.sql`
         UPDATE chunks
-        SET draft_scheduled_start = ${start.toISOString()}, draft_scheduled_end = ${end.toISOString()}, draft_order = ${i}, updated_at = NOW()
+        SET draft_scheduled_start = ${start.toISOString()}, draft_scheduled_end = ${end.toISOString()}, updated_at = NOW()
         WHERE id = ${chunk.id}
-      `;
+      `
     }
 
-    res.json({ success: true, draftId, scheduled: scheduled.length });
+    // Count projects scheduled
+    const projectsScheduled = new Set(scheduled.map(s => s.chunk.project_id)).size
+
+    res.json({
+      success: true,
+      draftId,
+      scheduled: scheduled.length,
+      projects: projectsScheduled,
+      rocksAvoided,
+      dateRange: {
+        start: startDate.toISOString().split('T')[0],
+        end: endDate.toISOString().split('T')[0]
+      }
+    })
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Schedule generate error:', err)
+    res.status(500).json({ error: err.message })
   }
-});
+})
 
 // Schedule - Publish draft
 app.post('/api/os-beta/schedule/publish', async (req, res) => {
@@ -1087,7 +1268,6 @@ app.post('/api/os-beta/schedule/publish', async (req, res) => {
             status = 'scheduled',
             draft_scheduled_start = NULL,
             draft_scheduled_end = NULL,
-            draft_order = NULL,
             updated_at = NOW()
         WHERE id = ${chunk.id}
       `;
@@ -1101,10 +1281,10 @@ app.post('/api/os-beta/schedule/publish', async (req, res) => {
   }
 });
 
-// Schedule - Clear draft
+// Schedule - Clear draft (preserve draft_order which defines chunk sequence within phases)
 app.post('/api/os-beta/schedule/clear', async (req, res) => {
   try {
-    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`;
+    await db.sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL`;
     await db.sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`;
     res.json({ success: true });
   } catch (err) {

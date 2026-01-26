@@ -96,7 +96,7 @@ function ActiveTimer({ timer, projects, onPause, onUpdateTime }) {
               max="99"
               value={editHours}
               onChange={(e) => setEditHours(e.target.value)}
-              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               autoFocus
             />
             <span>:</span>
@@ -106,7 +106,7 @@ function ActiveTimer({ timer, projects, onPause, onUpdateTime }) {
               max="59"
               value={editMins}
               onChange={(e) => setEditMins(e.target.value.slice(-2).padStart(2, '0'))}
-              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <span>:</span>
             <input
@@ -115,7 +115,7 @@ function ActiveTimer({ timer, projects, onPause, onUpdateTime }) {
               max="59"
               value={editSecs}
               onChange={(e) => setEditSecs(e.target.value.slice(-2).padStart(2, '0'))}
-              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50"
+              className="w-16 bg-white/20 text-white text-center rounded px-1 py-1 focus:outline-none focus:ring-2 focus:ring-white/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
           <div className="flex justify-center gap-2 mt-3">

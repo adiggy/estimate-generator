@@ -758,9 +758,7 @@ export default function SchedulePage() {
             publishing={publishing}
           />
 
-          {/* Revenue Forecast */}
-          <RevenueForecast forecast={forecast} />
-
+          {/* Week/List View - show BEFORE forecast so it's immediately visible */}
           {viewMode === 'week' ? (
             <WeekView
               draftChunks={draftChunks}
@@ -774,6 +772,9 @@ export default function SchedulePage() {
           ) : (
             <ChunkList chunks={draftChunks} onChunkClick={handleChunkClick} />
           )}
+
+          {/* Revenue Forecast - shown after the schedule view */}
+          <RevenueForecast forecast={forecast} />
         </>
       )}
     </div>

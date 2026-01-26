@@ -1,10 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Server, DollarSign, Users } from 'lucide-react'
+import { Server, DollarSign, Users, Calendar } from 'lucide-react'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
-
-// Hosting invoices are recurring amounts under $100
-const HOSTING_MAX = 10000
 
 export default function HostingPage() {
   const [projects, setProjects] = useState([])
@@ -32,34 +29,33 @@ export default function HostingPage() {
     setLoading(false)
   }
 
-  // Detect hosting amounts (recurring under $100)
-  const hostingAmounts = useMemo(() => {
-    const amountCounts = {}
-    invoices.forEach(inv => {
-      amountCounts[inv.total] = (amountCounts[inv.total] || 0) + 1
-    })
-    return new Set(
-      Object.entries(amountCounts)
-        .filter(([amount, count]) => count >= 2 && parseInt(amount) < HOSTING_MAX)
-        .map(([amount]) => parseInt(amount))
-    )
+  // Get hosting invoices (using is_hosting flag)
+  const hostingInvoices = useMemo(() => {
+    return invoices.filter(inv => inv.is_hosting)
   }, [invoices])
 
-  // Get the most recent hosting fee per client
+  // Get the most recent hosting invoice per client with MRR calculation
   const clientFees = useMemo(() => {
     const fees = {}
-    // Sort invoices by date descending to get most recent first
-    const sortedInvoices = [...invoices]
-      .filter(inv => hostingAmounts.has(inv.total))
+    // Sort by date descending to get most recent first
+    const sortedInvoices = [...hostingInvoices]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
     sortedInvoices.forEach(inv => {
       if (!fees[inv.client_id]) {
-        fees[inv.client_id] = inv.total
+        // For annual billing, divide by 12 for monthly rate
+        const monthlyAmount = inv.billing_cycle === 'annual'
+          ? Math.round(inv.total / 12)
+          : inv.total
+        fees[inv.client_id] = {
+          monthlyAmount,
+          totalAmount: inv.total,
+          billingCycle: inv.billing_cycle || 'monthly'
+        }
       }
     })
     return fees
-  }, [invoices, hostingAmounts])
+  }, [hostingInvoices])
 
   const formatMoney = (cents) => {
     if (!cents) return '$0'
@@ -69,10 +65,11 @@ export default function HostingPage() {
   const activeProjects = projects.filter(p => p.status === 'active')
   const inactiveProjects = projects.filter(p => p.status !== 'active')
 
-  // Calculate actual MRR from client fees
+  // Calculate MRR (sum of monthly amounts for active clients)
   const actualMRR = useMemo(() => {
     return activeProjects.reduce((sum, project) => {
-      return sum + (clientFees[project.client_id] || 0)
+      const fee = clientFees[project.client_id]
+      return sum + (fee?.monthlyAmount || 0)
     }, 0)
   }, [activeProjects, clientFees])
 
@@ -123,12 +120,13 @@ export default function HostingPage() {
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Client</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Project</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Monthly Fee</th>
+                  <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Billing</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Monthly Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {activeProjects.map(project => {
-                  const fee = clientFees[project.client_id] || 0
+                  const fee = clientFees[project.client_id]
                   return (
                     <tr key={project.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3 font-medium text-slate-900">
@@ -137,8 +135,26 @@ export default function HostingPage() {
                       <td className="px-4 py-3 text-slate-600">
                         {project.name}
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        {fee ? (
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            fee.billingCycle === 'annual'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {fee.billingCycle === 'annual' ? (
+                              <span className="flex items-center gap-1 justify-center">
+                                <Calendar className="w-3 h-3" />
+                                Annual ({formatMoney(fee.totalAmount)}/yr)
+                              </span>
+                            ) : 'Monthly'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-right text-slate-600">
-                        {fee > 0 ? formatMoney(fee) : <span className="text-slate-400">—</span>}
+                        {fee ? formatMoney(fee.monthlyAmount) : <span className="text-slate-400">—</span>}
                       </td>
                     </tr>
                   )
@@ -146,7 +162,7 @@ export default function HostingPage() {
               </tbody>
               <tfoot>
                 <tr className="bg-slate-50 border-t border-slate-200">
-                  <td colSpan="2" className="px-4 py-3 font-semibold text-slate-900">
+                  <td colSpan="3" className="px-4 py-3 font-semibold text-slate-900">
                     Total MRR
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-900">
