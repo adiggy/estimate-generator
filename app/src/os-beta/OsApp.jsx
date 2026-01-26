@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import {
   FolderKanban, Clock, FileText, Search, Menu, X, Users,
-  ChevronDown, Server, LayoutDashboard, ClipboardList, Receipt, CalendarDays
+  ChevronDown, Server, LayoutDashboard, ClipboardList, Receipt, CalendarDays, MessageSquare
 } from 'lucide-react'
 import ProjectsPage from './pages/ProjectsPage'
 import HostingPage from './pages/HostingPage'
@@ -13,6 +13,7 @@ import SearchPage from './pages/SearchPage'
 import ProposalsPage from './pages/ProposalsPage'
 import SchedulePage from './pages/SchedulePage'
 import ProposalEditPage from './pages/ProposalEditPage'
+import FeedbackPage from './pages/FeedbackPage'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -28,6 +29,7 @@ function Sidebar({ isOpen, onClose }) {
     { path: '/dashboard/os-beta/time', icon: Clock, label: 'Time' },
     { path: '/dashboard/os-beta/invoices', icon: Receipt, label: 'Invoices' },
     { path: '/dashboard/os-beta/schedule', icon: CalendarDays, label: 'Schedule' },
+    { path: '/dashboard/os-beta/feedback', icon: MessageSquare, label: 'Feedback' },
   ]
 
   return (
@@ -458,6 +460,7 @@ export default function OsApp() {
             <Route path="time" element={<TimePage />} />
             <Route path="invoices" element={<InvoicesPage />} />
             <Route path="schedule" element={<SchedulePage />} />
+            <Route path="feedback" element={<FeedbackPage />} />
             <Route path="search" element={<SearchPage />} />
           </Routes>
         </main>
