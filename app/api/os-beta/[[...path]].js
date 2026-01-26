@@ -1071,17 +1071,40 @@ async function handleProposals(req, res, sql) {
 }
 
 async function handleProposalById(req, res, sql, id) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
+  // GET - fetch single proposal
+  if (req.method === 'GET') {
+    const rows = await sql`SELECT id, data FROM proposals WHERE id = ${id}`
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Proposal not found' })
+    }
+    const data = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data
+    return res.status(200).json({ id: rows[0].id, ...data })
   }
 
-  const rows = await sql`SELECT id, data FROM proposals WHERE id = ${id}`
-  if (rows.length === 0) {
-    return res.status(404).json({ error: 'Proposal not found' })
+  // PUT - update proposal
+  if (req.method === 'PUT') {
+    const proposalData = req.body
+    proposalData.updatedAt = new Date().toISOString().split('T')[0]
+
+    await sql`
+      UPDATE proposals
+      SET data = ${JSON.stringify(proposalData)}, updated_at = NOW()
+      WHERE id = ${id}
+    `
+    return res.status(200).json({ success: true })
   }
 
-  const data = typeof rows[0].data === 'string' ? JSON.parse(rows[0].data) : rows[0].data
-  return res.status(200).json({ id: rows[0].id, ...data })
+  // DELETE - delete proposal
+  if (req.method === 'DELETE') {
+    const rows = await sql`SELECT id FROM proposals WHERE id = ${id}`
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Proposal not found' })
+    }
+    await sql`DELETE FROM proposals WHERE id = ${id}`
+    return res.status(200).json({ success: true })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
 }
 
 async function handleProposalConvert(req, res, sql, proposalId) {
