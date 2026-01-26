@@ -495,33 +495,44 @@ function EmptyState({ onGenerate, generating }) {
         Generate a draft schedule to preview before publishing to your calendar.
       </p>
 
-      <div className="bg-slate-50 rounded-lg p-4 mb-4 text-left">
-        <p className="text-sm text-slate-600 mb-2">
-          <span className="font-semibold text-slate-800">Claude Code tip:</span>{' '}
-          Ask Claude to generate and review a schedule:
+      {/* Mobile message */}
+      <div className="lg:hidden bg-amber-50 border border-amber-200 rounded-lg p-4 text-left">
+        <p className="text-sm text-amber-800">
+          <span className="font-semibold">Use your computer for this.</span>{' '}
+          Schedule generation uses Claude Code to intelligently analyze your projects and calendar availability.
         </p>
-        <code className="block text-xs bg-slate-100 text-slate-700 p-2 rounded font-mono">
-          "Generate a schedule for next week, avoiding my existing calendar events"
-        </code>
       </div>
 
-      <button
-        onClick={onGenerate}
-        disabled={generating}
-        className="px-4 py-2 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-2 mx-auto"
-      >
-        {generating ? (
-          <>
-            <RefreshCw className="w-4 h-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <Calendar className="w-4 h-4" />
-            Generate Draft Schedule
-          </>
-        )}
-      </button>
+      {/* Desktop: Claude Code tip and button */}
+      <div className="hidden lg:block">
+        <div className="bg-slate-50 rounded-lg p-4 mb-4 text-left">
+          <p className="text-sm text-slate-600 mb-2">
+            <span className="font-semibold text-slate-800">Claude Code tip:</span>{' '}
+            Ask Claude to generate and review a schedule:
+          </p>
+          <code className="block text-xs bg-slate-100 text-slate-700 p-2 rounded font-mono">
+            "Generate a schedule for next week, avoiding my existing calendar events"
+          </code>
+        </div>
+
+        <button
+          onClick={onGenerate}
+          disabled={generating}
+          className="px-4 py-2 bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-2 mx-auto"
+        >
+          {generating ? (
+            <>
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Calendar className="w-4 h-4" />
+              Generate Draft Schedule
+            </>
+          )}
+        </button>
+      </div>
     </div>
   )
 }
