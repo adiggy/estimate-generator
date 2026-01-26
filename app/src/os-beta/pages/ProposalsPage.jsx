@@ -23,7 +23,7 @@ function StatusBadge({ status }) {
   )
 }
 
-function ProposalCard({ proposal, projectExists, onConvert }) {
+function ProposalCard({ proposal, projectId, onConvert }) {
   const [converting, setConverting] = useState(false)
   const rate = 120 // $120/hr
 
@@ -45,7 +45,7 @@ function ProposalCard({ proposal, projectExists, onConvert }) {
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <h3 className="font-semibold text-slate-900">{proposal.projectName}</h3>
         <StatusBadge status={proposal.status} />
-        {projectExists && (
+        {projectId && (
           <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
             Project Created
           </span>
@@ -74,9 +74,9 @@ function ProposalCard({ proposal, projectExists, onConvert }) {
           Edit
         </Link>
 
-        {projectExists ? (
+        {projectId ? (
           <Link
-            to={`/dashboard/os-beta/projects/${proposal.id}`}
+            to={`/dashboard/os-beta/projects/${projectId}`}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors min-h-[44px]"
           >
             Visit Project
@@ -130,7 +130,7 @@ function ProposalCard({ proposal, projectExists, onConvert }) {
 
 export default function ProposalsPage() {
   const [proposals, setProposals] = useState([])
-  const [projectIds, setProjectIds] = useState(new Set())
+  const [proposalToProject, setProposalToProject] = useState(new Map()) // proposal_id -> project_id
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('all') // all, draft, sent, accepted
@@ -154,10 +154,16 @@ export default function ProposalsPage() {
       const proposalsData = await proposalsRes.json()
       setProposals(proposalsData)
 
-      // Get project IDs to check which proposals have been converted
+      // Build map from proposal_id to project_id
       if (projectsRes.ok) {
         const projectsData = await projectsRes.json()
-        setProjectIds(new Set(projectsData.map(p => p.id)))
+        const mapping = new Map()
+        projectsData.forEach(p => {
+          if (p.proposal_id) {
+            mapping.set(p.proposal_id, p.id)
+          }
+        })
+        setProposalToProject(mapping)
       }
     } catch (err) {
       console.error('Failed to load data:', err)
@@ -181,8 +187,8 @@ export default function ProposalsPage() {
         }
         throw new Error(data.error)
       }
-      // Update project IDs set and navigate to the new project
-      setProjectIds(prev => new Set([...prev, data.project.id]))
+      // Update mapping and navigate to the new project
+      setProposalToProject(prev => new Map(prev).set(proposalId, data.project.id))
       navigate(`/dashboard/os-beta/projects/${data.project.id}`)
     } catch (err) {
       alert(`Failed to convert: ${err.message}`)
@@ -194,10 +200,10 @@ export default function ProposalsPage() {
       if (filter === 'all') return true
       return p.status === filter
     })
-    // Sort accepted (converted) proposals to the top
+    // Sort converted proposals to the top
     .sort((a, b) => {
-      const aConverted = projectIds.has(a.id) || a.status === 'accepted'
-      const bConverted = projectIds.has(b.id) || b.status === 'accepted'
+      const aConverted = proposalToProject.has(a.id) || a.status === 'accepted'
+      const bConverted = proposalToProject.has(b.id) || b.status === 'accepted'
       if (aConverted && !bConverted) return -1
       if (!aConverted && bConverted) return 1
       return 0
@@ -279,7 +285,7 @@ export default function ProposalsPage() {
             <ProposalCard
               key={proposal.id}
               proposal={proposal}
-              projectExists={projectIds.has(proposal.id)}
+              projectId={proposalToProject.get(proposal.id)}
               onConvert={handleConvert}
             />
           ))}
