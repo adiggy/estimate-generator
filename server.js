@@ -583,11 +583,11 @@ app.get('/api/os-beta/feedback', async (req, res) => {
 
 app.post('/api/os-beta/feedback', async (req, res) => {
   try {
-    const { text } = req.body;
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: 'Text is required' });
+    const { text, image } = req.body;
+    if (!text && !image) {
+      return res.status(400).json({ error: 'Text or image is required' });
     }
-    const item = await db.createFeedback(text.trim());
+    const item = await db.createFeedback(text || '(screenshot)', image);
     res.json(item);
   } catch (err) {
     res.status(500).json({ error: err.message });

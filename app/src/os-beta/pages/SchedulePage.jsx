@@ -251,7 +251,7 @@ function WeekView({ draftChunks, rocks = [], lunchBreaks = [], weekStart, onWeek
         <button
           onClick={() => onWeekChange(-1)}
           disabled={!hasPrevWeek}
-          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <ChevronLeft className="w-5 h-5 text-slate-600" />
         </button>
@@ -266,7 +266,7 @@ function WeekView({ draftChunks, rocks = [], lunchBreaks = [], weekStart, onWeek
         <button
           onClick={() => onWeekChange(1)}
           disabled={!hasNextWeek}
-          className="p-1.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed"
+          className="p-2.5 rounded hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <ChevronRight className="w-5 h-5 text-slate-600" />
         </button>
@@ -333,7 +333,7 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
           <button
             onClick={onClear}
             disabled={publishing}
-            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1"
+            className="px-4 py-2.5 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1 min-h-[44px]"
           >
             <X className="w-4 h-4" />
             Clear
@@ -341,7 +341,7 @@ function DraftSummary({ draft, draftChunks, onPublish, onClear, publishing }) {
           <button
             onClick={onPublish}
             disabled={publishing}
-            className="px-3 py-1.5 text-sm bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-1"
+            className="px-4 py-2.5 text-sm bg-brand-slate text-white rounded-lg hover:bg-brand-slate/80 disabled:opacity-50 flex items-center gap-1 min-h-[44px]"
           >
             {publishing ? (
               <>
@@ -703,10 +703,10 @@ export default function SchedulePage() {
         </div>
 
         {draftChunks.length > 0 && (
-          <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
             <button
               onClick={() => setViewMode('week')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-4 py-2.5 text-sm rounded-md transition-colors min-h-[44px] ${
                 viewMode === 'week'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -716,7 +716,7 @@ export default function SchedulePage() {
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+              className={`px-4 py-2.5 text-sm rounded-md transition-colors min-h-[44px] ${
                 viewMode === 'list'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'

@@ -827,13 +827,14 @@ async function getFeedback() {
 /**
  * Create a new feedback item
  * @param {string} text - Feedback text
+ * @param {string} image - Optional base64 image data
  * @returns {Promise<Object>}
  */
-async function createFeedback(text) {
+async function createFeedback(text, image = null) {
   const id = generateId('fb')
   await sql`
-    INSERT INTO feedback (id, text, created_at)
-    VALUES (${id}, ${text}, NOW())
+    INSERT INTO feedback (id, text, image, created_at)
+    VALUES (${id}, ${text}, ${image}, NOW())
   `
   const rows = await sql`SELECT * FROM feedback WHERE id = ${id}`
   return rows[0]

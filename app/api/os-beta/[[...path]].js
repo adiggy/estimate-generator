@@ -1532,12 +1532,13 @@ async function handleFeedback(req, res, sql) {
   }
 
   if (req.method === 'POST') {
-    const { text } = req.body
-    if (!text || !text.trim()) {
-      return res.status(400).json({ error: 'Text is required' })
+    const { text, image } = req.body
+    if (!text && !image) {
+      return res.status(400).json({ error: 'Text or image is required' })
     }
     const id = generateFeedbackId()
-    await sql`INSERT INTO feedback (id, text, created_at) VALUES (${id}, ${text.trim()}, NOW())`
+    const finalText = text?.trim() || '(screenshot)'
+    await sql`INSERT INTO feedback (id, text, image, created_at) VALUES (${id}, ${finalText}, ${image || null}, NOW())`
     const rows = await sql`SELECT * FROM feedback WHERE id = ${id}`
     return res.status(200).json(rows[0])
   }

@@ -309,10 +309,10 @@ function FinalizedEntry({ entry, projects, onDelete }) {
       {!entry.invoiced && (
         <button
           onClick={() => onDelete(entry.id, entry.description || 'Work session')}
-          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          className="p-3 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
           title="Delete"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-5 h-5" />
         </button>
       )}
     </div>

@@ -112,7 +112,7 @@ export default function ProjectsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-3 py-2 text-sm rounded-lg border transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm rounded-lg border transition-colors min-h-[44px] ${
               showFilters || statusFilter
                 ? 'bg-brand-red/10 border-brand-red text-brand-red'
                 : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
@@ -133,7 +133,7 @@ export default function ProjectsPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setStatusFilter('')}
-              className={`px-3 py-1.5 text-sm rounded-lg ${
+              className={`px-4 py-2.5 text-sm rounded-lg min-h-[44px] ${
                 !statusFilter ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
@@ -143,7 +143,7 @@ export default function ProjectsPage() {
               <button
                 key={value}
                 onClick={() => setStatusFilter(value)}
-                className={`px-3 py-1.5 text-sm rounded-lg ${
+                className={`px-4 py-2.5 text-sm rounded-lg min-h-[44px] ${
                   statusFilter === value ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >

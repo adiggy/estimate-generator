@@ -52,20 +52,17 @@ function Sidebar({ isOpen, onClose }) {
           flex flex-col overflow-hidden
         `}
       >
-        <div className="p-4 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <h1 className="text-white font-bold text-lg">Adrial OS</h1>
-            <button
-              onClick={onClose}
-              className="lg:hidden text-white/60 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-white/40 text-xs mt-1">Agency Operating System</p>
+        {/* Close button for mobile */}
+        <div className="lg:hidden flex justify-end p-2">
+          <button
+            onClick={onClose}
+            className="text-white/60 hover:text-white p-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 p-2 pt-0 lg:pt-4 space-y-1 overflow-y-auto">
           {navItems.map(item => (
             <NavLink
               key={item.path}
@@ -216,9 +213,9 @@ function Header({ onMenuClick }) {
       <div className="flex items-center gap-4">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900"
+          className="lg:hidden p-3 -ml-3 text-slate-600 hover:text-slate-900 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
-          <Menu className="w-5 h-5" />
+          <Menu className="w-6 h-6" />
         </button>
       </div>
 
@@ -344,7 +341,7 @@ function Header({ onMenuClick }) {
         ) : (
           <button
             onClick={() => setSearchOpen(true)}
-            className="p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
+            className="p-3 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg min-w-[44px] min-h-[44px] flex items-center justify-center"
           >
             <Search className="w-5 h-5" />
           </button>
