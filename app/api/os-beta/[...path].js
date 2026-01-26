@@ -65,6 +65,9 @@ export default async function handler(req, res) {
         if (id === 'clear') return handleScheduleClear(req, res, sql)
         return res.status(404).json({ error: 'Schedule route not found' })
 
+      case 'feedback':
+        return id ? handleFeedbackById(req, res, sql, id) : handleFeedback(req, res, sql)
+
       default:
         return res.status(404).json({ error: 'Route not found', path: pathSegments })
     }
@@ -1501,4 +1504,46 @@ async function handleScheduleClear(req, res, sql) {
   await sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`
 
   return res.status(200).json({ success: true })
+}
+
+// ============ FEEDBACK ============
+
+function generateFeedbackId() {
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 8)
+  return `fb-${timestamp}-${random}`
+}
+
+async function handleFeedback(req, res, sql) {
+  if (req.method === 'GET') {
+    const rows = await sql`SELECT * FROM feedback ORDER BY created_at DESC`
+    return res.status(200).json(rows)
+  }
+
+  if (req.method === 'POST') {
+    const { text } = req.body
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: 'Text is required' })
+    }
+    const id = generateFeedbackId()
+    await sql`INSERT INTO feedback (id, text, created_at) VALUES (${id}, ${text.trim()}, NOW())`
+    const rows = await sql`SELECT * FROM feedback WHERE id = ${id}`
+    return res.status(200).json(rows[0])
+  }
+
+  if (req.method === 'DELETE') {
+    await sql`DELETE FROM feedback`
+    return res.status(200).json({ success: true })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
+}
+
+async function handleFeedbackById(req, res, sql, id) {
+  if (req.method === 'DELETE') {
+    await sql`DELETE FROM feedback WHERE id = ${id}`
+    return res.status(200).json({ success: true })
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' })
 }
