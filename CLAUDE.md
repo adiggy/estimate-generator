@@ -389,10 +389,81 @@ The app is deployed on **Vercel** with a **Neon PostgreSQL** database.
 
 ### Database (Neon)
 
+**Source of Truth:** All client and project data lives in **Neon PostgreSQL** (cloud database). Local files in `legacy_data/` are exports/backups only.
+
+**Connection:** `DATABASE_URL` environment variable in `.env`
+
 Proposals, templates, and clients are stored in Neon PostgreSQL with JSONB columns:
 - `proposals` table: `id` (TEXT), `data` (JSONB), `created_at`, `updated_at`
 - `templates` table: `type` (TEXT), `data` (JSONB)
-- `clients` table: `id` (TEXT), `data` (JSONB)
+- `clients` table: `id` (TEXT), `data` (JSONB), `stripe_customer_id` (TEXT)
+
+**Clients Table Schema:**
+```sql
+clients (
+  id TEXT PRIMARY KEY,           -- e.g., 'donald-whittier'
+  data JSONB,                    -- Client details (see below)
+  stripe_customer_id TEXT        -- Stripe Customer ID (e.g., 'cus_xxx')
+)
+```
+
+**Client Data JSONB Fields:**
+```json
+{
+  "id": "client-slug",
+  "name": "Client Company Name",
+  "contactName": "Primary Contact Person",
+  "email": "billing@example.com",
+  "historicalCharges": 51,        // Past Stripe charges count
+  "historicalTotal": 2027.21,     // Past Stripe charges total ($)
+  "cardholderName": "Name on Card",
+  "projectCount": 2,              // Number of hosting projects
+  "monthlyTotal": 7800,           // Total monthly rate (cents)
+  "monthlyProfit": 2600           // Total monthly profit (cents)
+}
+```
+
+**Local Data Files (exports only):**
+- `legacy_data/stripe_migration_status.csv` - Current hosting clients export
+- `legacy_data/hosting_billing_dates.csv` - Billing dates from Bonsai
+- `legacy_data/stripe_by_bonsai_client.csv` - Historical Stripe charges
+- `legacy_data/bonsai/` - Bonsai platform exports
+
+**Script to Consolidate/Export:**
+```bash
+node scripts/fix-client-data.js      # Fix historical charges & billing dates
+node scripts/export-hosting-csv.js   # Export to CSV
+```
+
+### Hosting Billing Table
+
+The `hosting_billing` table contains all hosting clients with complete billing data:
+
+```sql
+hosting_billing (
+  id TEXT PRIMARY KEY,              -- project_id (unique per hosting project)
+  client_id TEXT,                   -- e.g., 'donald-whittier'
+  client_name TEXT,                 -- e.g., 'Donald Whittier'
+  contact_name TEXT,                -- e.g., 'Dan May'
+  email TEXT,                       -- billing email
+  stripe_customer_id TEXT,          -- Stripe Customer ID when card saved
+  stripe_status TEXT,               -- 'ready' or 'needs_setup'
+  project_id TEXT,                  -- hosting project ID
+  project_name TEXT,                -- e.g., 'Banzai website hosting'
+  rate_cents INTEGER,               -- monthly rate in cents
+  webflow_cost_cents INTEGER,       -- Webflow cost in cents
+  profit_cents INTEGER,             -- rate - webflow_cost
+  last_invoice_date DATE,           -- last Bonsai invoice date
+  next_billing_date DATE,           -- next billing date
+  billing_platform TEXT,            -- 'bonsai_legacy' or 'os'
+  historical_charges INTEGER,       -- past Stripe charge count
+  historical_total_usd NUMERIC,     -- past Stripe charge total
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+)
+```
+
+**Note:** Clients with multiple hosting projects (e.g., Donald Whittier) have multiple rows.
 
 ### Syncing Local Proposals to Production
 
@@ -564,6 +635,15 @@ All OS endpoints are under `/api/os-beta/`:
 | `/proposals/{id}` | GET, PUT, DELETE | Single proposal operations |
 | `/stats` | GET | CFO metrics (unbilled, unpaid, revenue) |
 | `/search?q=term` | GET | Global search across all data |
+| `/stripe/checkout-session` | POST | Generate Stripe Checkout link for card setup |
+| `/stripe/customer/{clientId}` | GET | Get client's Stripe customer & payment methods |
+| `/stripe/charge` | POST | Charge a client's saved card |
+| `/webhooks/stripe` | POST | Stripe webhook handler |
+
+**Stripe Billing Endpoints:**
+- `POST /stripe/checkout-session` - Body: `{ clientId }` → Returns `{ sessionId, url, customerId }`
+- `GET /stripe/customer/{clientId}` → Returns `{ hasStripeCustomer, customerId, paymentMethods[] }`
+- `POST /stripe/charge` - Body: `{ clientId, amount, description }` → Charges saved card
 
 **Time Log Actions (PUT /time-logs/{id}):**
 - `action: 'pause'` - Pause active timer, accumulate seconds
@@ -880,6 +960,300 @@ npm start  # Starts both API (3002) and Vite (5173)
 1. Push to main branch
 2. Vercel auto-deploys
 3. API routes in `app/api/` are serverless functions
+
+---
+
+## Part 3: Hosting & Billing (Bonsai → Stripe Migration)
+
+### Current State (As of Jan 2026)
+
+**Billing Platforms:**
+- **Bonsai** - Current invoicing platform for all recurring hosting and one-time project work
+- **Stripe** - Payment processor (receives payments from Bonsai)
+- **OS Beta** - Future invoicing platform (not yet handling payments)
+
+**Key Finding:** Bonsai stores customer card data, NOT Stripe. Your Stripe account has charges but no reusable Stripe Customer objects. To charge cards directly through Stripe (bypassing Bonsai), customers would need to re-enter their cards.
+
+### Hosting Profitability
+
+The Hosting page (`/dashboard/os-beta/hosting`) shows MRR with Webflow costs:
+
+**Database Fields:**
+- `rate` - What you charge the client (cents)
+- `webflow_cost` - What Webflow charges you (cents)
+- Profit = rate - webflow_cost
+
+**Webflow Pricing Tiers:**
+| Plan | Monthly Cost |
+|------|--------------|
+| CMS | $29/mo |
+| Business | $49/mo |
+| Basic | $18/mo |
+| Annual CMS | $23/mo ($276/yr) |
+| Legacy (30% off) | $20.30/mo |
+
+**Script:** `scripts/add-webflow-costs.js` - Maps Webflow sites to hosting clients
+
+**Hosting Page Filter:** Only shows clients with `webflow_cost > 0` (active). Clients with $0 Webflow cost are defunct and hidden.
+
+### Hosting Client Database (Source of Truth)
+
+The `hosting_billing` table in Neon is the authoritative source for all hosting client data.
+
+**Table: `hosting_billing`**
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | SERIAL | Primary key |
+| `client_id` | TEXT | Unique client identifier (e.g., `burk-uzzle`) |
+| `client_name` | TEXT | Display name |
+| `contact_name` | TEXT | Primary contact |
+| `email` | TEXT | Billing email |
+| `stripe_customer_id` | TEXT | Stripe Customer ID (if migrated) |
+| `stripe_status` | TEXT | `ready` or `needs_setup` |
+| `project_id` | TEXT | Hosting project ID |
+| `project_name` | TEXT | Project display name |
+| `rate_cents` | INT | Monthly charge in cents |
+| `webflow_cost_cents` | INT | Monthly Webflow cost in cents |
+| `profit_cents` | INT | Monthly profit (rate - webflow_cost) |
+| `last_invoice_date` | DATE | Last Bonsai invoice date |
+| `next_billing_date` | DATE | Next billing date |
+| `billing_platform` | TEXT | `bonsai_legacy` or `os` |
+| `billing_frequency` | TEXT | `monthly` or `annual` |
+| `historical_charges` | INT | Total hosting invoices (hosting-only, not project work) |
+| `historical_total_usd` | DECIMAL | Total hosting revenue historically |
+| `checkout_link` | TEXT | Stripe Checkout URL for card setup |
+| `created_at` | TIMESTAMP | Record creation |
+| `updated_at` | TIMESTAMP | Last update |
+
+**Billing Frequency:**
+The `billing_frequency` field indicates whether the client is billed monthly or annually.
+- `monthly` - Charged every month (default)
+- `annual` - Charged once per year
+
+**Annual Clients (5 total):**
+| Client | Annual Amount | Monthly Equivalent |
+|--------|---------------|-------------------|
+| Ainsworth & Associates | $372.60 | $31.05 |
+| Self-Care Info | $372.60 | $31.05 |
+| Silverstone Jewelers | $372.60 | $31.05 |
+| Cliff Cottage Inn | $487.20 | $40.60 |
+| Colorado State University | $487.20 | $40.60 |
+
+The `rate_cents` field always stores the **monthly equivalent** for consistency in MRR calculations.
+
+**Rate Accuracy:**
+The `rate_cents` values come from **actual Stripe charges**, not Bonsai invoice amounts. Bonsai shows pre-fee amounts, but Stripe shows what customers actually pay (including ~5% transaction fee passed to client).
+
+To verify rates against Stripe:
+```bash
+node scripts/check-stripe-rates.js
+```
+
+**Historical Charges (Hosting Only):**
+The `historical_charges` and `historical_total_usd` fields ONLY count Bonsai invoices where the project name contains "hosting". This excludes one-time project work (logos, websites, etc.) that would inflate the numbers.
+
+To recalculate hosting-only history:
+```bash
+node scripts/fix-hosting-history.js
+```
+
+**Current Totals (Jan 2026):**
+- Monthly MRR: $1,250.95
+- Monthly Profit: $385.35
+- Historical hosting revenue: $47,482.80 across 1,049 invoices
+
+**Known Issues:**
+- **Resonant Body** has negative profit (-$1.91/mo) - charging $27.09 but Webflow costs $29.00
+
+**Scripts:**
+| Script | Purpose |
+|--------|---------|
+| `scripts/export-hosting-csv.js` | Export hosting_billing table to CSV |
+| `scripts/check-stripe-rates.js` | Query Stripe API for actual charge amounts by payer |
+| `scripts/fix-rates-from-stripe.js` | Update rates based on Stripe charge data |
+| `scripts/fix-hosting-history.js` | Recalculate historical charges (hosting invoices only) |
+| `scripts/fix-client-data.js` | Manual corrections to client data |
+| `scripts/consolidate-hosting-clients.js` | Merge data from multiple sources |
+
+**CSV Export:** `legacy_data/stripe_migration_status.csv` - Generated from hosting_billing table, includes billing_frequency column
+
+### Stripe Customer Mapping (Completed)
+
+**What was done:**
+1. Fetched all 1,316 Stripe charges via API
+2. Extracted Bonsai invoice numbers from charge descriptions
+3. Matched to Bonsai invoice export to get exact client names
+4. Created mapping of Stripe payers → Bonsai clients
+5. Filtered to hosting-only invoices (project name contains "hosting")
+
+**Important:** The `stripe_by_bonsai_client.csv` contains ALL charges (including project work). For hosting-only history, use `scripts/fix-hosting-history.js` which filters Bonsai invoices to those with "hosting" in the project name.
+
+**Output Files:**
+| File | Contents |
+|------|----------|
+| `legacy_data/stripe_by_bonsai_client.csv` | All 75 Bonsai clients with ALL Stripe charges (includes project work) |
+| `legacy_data/stripe_migration_status.csv` | Active hosting clients with hosting-only history |
+| `legacy_data/hosting_billing_dates.csv` | 32 active hosting clients with next billing dates |
+
+**Key Stats:**
+- 1,316 total Stripe charges (all types)
+- 1,049 hosting-only invoices
+- $47,482.80 total hosting revenue historically
+- 33 active hosting projects (28 monthly, 5 annual)
+
+### Bonsai Data Exports
+
+Located in `legacy_data/bonsai/`:
+
+| File | Contents |
+|------|----------|
+| `adrial_invoice_export_*.csv` | 1,517 invoices with amounts, dates, client names |
+| `adrial_companiescontact_export_*.csv` | 70 clients with contact names and emails |
+| `adrial_project_export_*.csv` | Project names and details |
+| `adrial_timeentry_export_*.csv` | Time entries |
+
+**CSV Columns (Invoice Export):**
+- 0: status, 1: total_amount, 11: issued_date, 13: paid_date
+- 14: invoice_number, 15: project_name, 16: client_name, 17: client_email
+
+### Migration Strategy (Future)
+
+**Recommended Approach: Gradual Migration**
+
+1. **Keep Bonsai for existing recurring clients** - Cards are stored there
+2. **When a card fails/expires** - Send Stripe Checkout link instead of Bonsai update
+3. **New clients** - Go directly through Stripe from day one
+4. **Result** - Natural migration over 1-2 years as cards expire
+
+**Email Migration Flow (When Ready):**
+```
+1. OS generates personalized email per client:
+   - Stripe Checkout link to save new card
+   - Their next billing date and amount
+
+2. Resend sends the email
+
+3. Client enters card on Stripe's hosted page
+
+4. Webhook creates Stripe Customer with saved PaymentMethod
+
+5. On billing date, OS charges via Stripe
+```
+
+**Timing Recommendation:**
+- Send migration emails 10-14 days before billing date
+- Gives time to act without forgetting
+- Allows follow-up if needed
+
+### Environment Variables (Stripe)
+
+```
+STRIPE_SECRET_KEY=sk_live_xxx  # Added to .env
+```
+
+**Future (when ready for full migration):**
+```
+RESEND_API_KEY=re_xxx          # For sending migration emails
+STRIPE_WEBHOOK_SECRET=whsec_xxx # For payment confirmations
+```
+
+### Scripts Reference
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/add-webflow-costs.js` | Add Webflow costs to hosting projects |
+| `scripts/match_stripe_v4.js` | Match Stripe charges to Bonsai clients |
+| `scripts/quick-project.js` | Create projects without proposals |
+| `scripts/export-hosting-csv.js` | Export hosting_billing table to CSV |
+| `scripts/check-stripe-rates.js` | Query Stripe API for actual recurring charge amounts |
+| `scripts/fix-rates-from-stripe.js` | Update DB rates based on Stripe charge data |
+| `scripts/fix-hosting-history.js` | Recalculate historical charges (hosting-only) |
+| `scripts/fix-client-data.js` | Manual corrections to historical data |
+| `scripts/consolidate-hosting-clients.js` | Merge data from Bonsai, Stripe, billing CSVs |
+
+### Stripe Billing API (Implemented)
+
+These endpoints are in `server.js` for the migration workflow:
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/os-beta/stripe/checkout-session` | POST | Create Stripe Checkout link for card setup |
+| `/api/os-beta/stripe/customer/:clientId` | GET | Get Stripe customer and payment methods |
+| `/api/os-beta/stripe/charge` | POST | Charge a client's saved card |
+| `/api/os-beta/webhooks/stripe` | POST | Handle Stripe webhook events |
+| `/api/os-beta/email/billing-setup` | POST | Send billing setup email via Resend |
+
+**Checkout Session Request:**
+```javascript
+POST /api/os-beta/stripe/checkout-session
+{
+  "clientId": "burk-uzzle",
+  "successUrl": "https://...",  // optional
+  "cancelUrl": "https://..."    // optional, defaults to adrialdesigns.com
+}
+```
+
+**Response includes:** `checkoutUrl`, `customerId`, `sessionId`
+
+### API Integration (Future)
+
+**Stripe Invoice Flow (not yet implemented):**
+```javascript
+// 1. Create Stripe Customer (if new)
+const customer = await stripe.customers.create({
+  email: client.email,
+  name: client.name
+})
+
+// 2. Create Invoice with line items
+const invoice = await stripe.invoices.create({
+  customer: customer.id,
+  collection_method: 'send_invoice',
+  days_until_due: 30
+})
+
+// 3. Add line items
+await stripe.invoiceItems.create({
+  customer: customer.id,
+  invoice: invoice.id,
+  description: 'Website hosting - February 2026',
+  amount: 3900, // $39.00 in cents
+  currency: 'usd'
+})
+
+// 4. Finalize and send
+await stripe.invoices.finalizeInvoice(invoice.id)
+await stripe.invoices.sendInvoice(invoice.id)
+// Stripe handles all customer emails automatically
+```
+
+**Webhook Handler (future endpoint):**
+```
+POST /api/os-beta/webhooks/stripe
+- invoice.paid → Update OS invoice status to 'paid'
+- invoice.payment_failed → Alert for follow-up
+- customer.subscription.updated → Sync changes
+```
+
+### Data Relationships
+
+```
+Bonsai Invoice #2595
+    ↓ (description contains invoice #)
+Stripe Charge ch_xxx
+    ↓ (matched via script)
+OS Invoice record
+    ↓ (client_id link)
+OS Client / Hosting Project
+```
+
+**Future (post-migration):**
+```
+OS Invoice
+    → Stripe Invoice (stripe_invoice_id)
+    → Stripe Customer (stripe_customer_id on client)
+    → PaymentMethod (saved card)
+```
 
 ---
 
