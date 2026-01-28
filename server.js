@@ -15,13 +15,60 @@ const PROPOSALS_DIR = path.join(DATA_DIR, 'proposals');
 const TEMPLATES_DIR = path.join(DATA_DIR, 'templates');
 const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 
-app.use(cors());
+// App URL for redirects (defaults to localhost for development)
+const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+
+// HTML escape helper to prevent XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// Validate file path parameter to prevent path traversal
+function isValidPathParam(param) {
+  if (!param || typeof param !== 'string') return false;
+  // Only allow alphanumeric, hyphens, and underscores
+  return /^[a-zA-Z0-9_-]+$/.test(param);
+}
+
+// CORS - restrict to allowed origins
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3002',
+  'https://adesigns-estimate.vercel.app',
+  'https://adrialdesigns.com'
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, curl, etc) in development
+    if (!origin && process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Auth endpoint (matches Vercel serverless function)
 app.post('/api/auth', (req, res) => {
   const { pin } = req.body;
-  const correctPin = process.env.EDIT_PIN || '6350';
+  const correctPin = process.env.EDIT_PIN;
+
+  // SECURITY: Require EDIT_PIN to be set - no fallback
+  if (!correctPin) {
+    console.error('EDIT_PIN environment variable not set');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
 
   if (pin === correctPin) {
     res.json({ success: true });
@@ -89,7 +136,15 @@ app.get('/api/templates', (req, res) => {
 // Get single template by type
 app.get('/api/templates/:type', (req, res) => {
   try {
+    // SECURITY: Validate path parameter to prevent path traversal
+    if (!isValidPathParam(req.params.type)) {
+      return res.status(400).json({ error: 'Invalid template type' });
+    }
     const filePath = path.join(TEMPLATES_DIR, `${req.params.type}.json`);
+    // Double-check the resolved path is within TEMPLATES_DIR
+    if (!filePath.startsWith(TEMPLATES_DIR)) {
+      return res.status(400).json({ error: 'Invalid template path' });
+    }
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       res.json(data);
@@ -127,7 +182,14 @@ app.get('/api/proposals', (req, res) => {
 // Get single proposal
 app.get('/api/proposals/:id', (req, res) => {
   try {
+    // SECURITY: Validate path parameter to prevent path traversal
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
     const filePath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!filePath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
     if (fs.existsSync(filePath)) {
       const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
       res.json(data);
@@ -155,11 +217,19 @@ app.post('/api/proposals', (req, res) => {
       proposal.id = `${today}-${slug}`;
     }
 
+    // SECURITY: Validate generated/provided ID
+    if (!isValidPathParam(proposal.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID format' });
+    }
+
     proposal.createdAt = proposal.createdAt || today;
     proposal.updatedAt = today;
     proposal.status = proposal.status || 'draft';
 
     const filePath = path.join(PROPOSALS_DIR, `${proposal.id}.json`);
+    if (!filePath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
     fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));
     res.json(proposal);
   } catch (err) {
@@ -170,7 +240,14 @@ app.post('/api/proposals', (req, res) => {
 // Update proposal
 app.put('/api/proposals/:id', (req, res) => {
   try {
+    // SECURITY: Validate path parameter to prevent path traversal
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
     const filePath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!filePath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
     const proposal = req.body;
     proposal.updatedAt = new Date().toISOString().split('T')[0];
     fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));
@@ -183,7 +260,14 @@ app.put('/api/proposals/:id', (req, res) => {
 // Delete proposal
 app.delete('/api/proposals/:id', (req, res) => {
   try {
+    // SECURITY: Validate path parameter to prevent path traversal
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
     const filePath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!filePath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       res.json({ success: true });
@@ -192,6 +276,244 @@ app.delete('/api/proposals/:id', (req, res) => {
     }
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete proposal' });
+  }
+});
+
+// ============================================================================
+// PROPOSAL VERSIONING
+// ============================================================================
+
+// Save a version of a proposal
+app.post('/api/proposals/:id/versions', (req, res) => {
+  try {
+    // SECURITY: Validate path parameter
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    const { versionName } = req.body;
+    const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!proposalPath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
+
+    if (!fs.existsSync(proposalPath)) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
+    const archivePath = proposal.archivePath || `archive/${req.params.id}`;
+    const versionsDir = path.join(__dirname, archivePath, 'versions');
+
+    // Create versions directory if needed
+    if (!fs.existsSync(versionsDir)) {
+      fs.mkdirSync(versionsDir, { recursive: true });
+    }
+
+    // Generate filename with date and time (EST)
+    const now = new Date();
+    const estDate = now.toLocaleDateString('en-CA', { timeZone: 'America/New_York' }); // YYYY-MM-DD
+    const estTime = now.toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    }).replace(':', ''); // HHMM
+    const safeName = versionName
+      ? versionName.replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '-').toLowerCase()
+      : 'backup';
+    const filename = `${estDate}_${estTime}_${safeName}.json`;
+    const filepath = path.join(versionsDir, filename);
+
+    // Save version
+    fs.writeFileSync(filepath, JSON.stringify(proposal, null, 2));
+
+    res.json({
+      success: true,
+      filename,
+      path: filepath,
+      date: estDate,
+      time: estTime,
+      versionName: versionName || 'backup'
+    });
+  } catch (err) {
+    console.error('Version save error:', err);
+    res.status(500).json({ error: 'Failed to save version' });
+  }
+});
+
+// List versions of a proposal
+app.get('/api/proposals/:id/versions', (req, res) => {
+  try {
+    // SECURITY: Validate path parameter
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!proposalPath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
+
+    if (!fs.existsSync(proposalPath)) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
+    const archivePath = proposal.archivePath || `archive/${req.params.id}`;
+    const versionsDir = path.join(__dirname, archivePath, 'versions');
+
+    if (!fs.existsSync(versionsDir)) {
+      return res.json([]);
+    }
+
+    const files = fs.readdirSync(versionsDir)
+      .filter(f => f.endsWith('.json'))
+      .map(filename => {
+        const parts = filename.replace('.json', '').split('_');
+        const date = parts[0];
+        // Check if second part is a time (4 digits) or part of the name
+        const hasTime = parts[1] && /^\d{4}$/.test(parts[1]);
+        const time = hasTime ? parts[1] : null;
+        const nameParts = hasTime ? parts.slice(2) : parts.slice(1);
+        const stats = fs.statSync(path.join(versionsDir, filename));
+
+        // Format time for display (HHMM -> HH:MM AM/PM)
+        let timeDisplay = '';
+        if (time) {
+          const hours = parseInt(time.slice(0, 2));
+          const mins = time.slice(2);
+          const ampm = hours >= 12 ? 'PM' : 'AM';
+          const hour12 = hours % 12 || 12;
+          timeDisplay = `${hour12}:${mins} ${ampm}`;
+        }
+
+        return {
+          filename,
+          date,
+          time: timeDisplay,
+          versionName: nameParts.join('_').replace(/-/g, ' '),
+          createdAt: stats.mtime.toISOString()
+        };
+      })
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(files);
+  } catch (err) {
+    console.error('Version list error:', err);
+    res.status(500).json({ error: 'Failed to list versions' });
+  }
+});
+
+// Get a specific version
+app.get('/api/proposals/:id/versions/:filename', (req, res) => {
+  try {
+    // SECURITY: Validate path parameters
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    // Filename validation: allow date_time_name.json format
+    if (!/^[\w\-]+\.json$/.test(req.params.filename)) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!proposalPath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
+
+    if (!fs.existsSync(proposalPath)) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
+    const archivePath = proposal.archivePath || `archive/${req.params.id}`;
+    const versionsDir = path.resolve(__dirname, archivePath, 'versions');
+    const versionPath = path.join(versionsDir, req.params.filename);
+    // Verify resolved path is within versions directory
+    if (!versionPath.startsWith(versionsDir)) {
+      return res.status(400).json({ error: 'Invalid version path' });
+    }
+
+    if (!fs.existsSync(versionPath)) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+    res.json(versionData);
+  } catch (err) {
+    console.error('Version get error:', err);
+    res.status(500).json({ error: 'Failed to get version' });
+  }
+});
+
+// Delete a version
+app.delete('/api/proposals/:id/versions/:filename', (req, res) => {
+  try {
+    // SECURITY: Validate path parameters
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    // Filename validation: allow date_time_name.json format
+    if (!/^[\w\-]+\.json$/.test(req.params.filename)) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+    const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!proposalPath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
+
+    if (!fs.existsSync(proposalPath)) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
+    const archivePath = proposal.archivePath || `archive/${req.params.id}`;
+    const versionsDir = path.resolve(__dirname, archivePath, 'versions');
+    const versionPath = path.join(versionsDir, req.params.filename);
+    // Verify resolved path is within versions directory
+    if (!versionPath.startsWith(versionsDir)) {
+      return res.status(400).json({ error: 'Invalid version path' });
+    }
+
+    if (!fs.existsSync(versionPath)) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    fs.unlinkSync(versionPath);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Version delete error:', err);
+    res.status(500).json({ error: 'Failed to delete version' });
+  }
+});
+
+// Restore a version (overwrites current proposal)
+app.post('/api/proposals/:id/versions/:filename/restore', (req, res) => {
+  try {
+    const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+
+    if (!fs.existsSync(proposalPath)) {
+      return res.status(404).json({ error: 'Proposal not found' });
+    }
+
+    const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
+    const archivePath = proposal.archivePath || `archive/${req.params.id}`;
+    const versionPath = path.join(__dirname, archivePath, 'versions', req.params.filename);
+
+    if (!fs.existsSync(versionPath)) {
+      return res.status(404).json({ error: 'Version not found' });
+    }
+
+    const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+
+    // Update the timestamp
+    versionData.updatedAt = new Date().toISOString().split('T')[0];
+
+    // Save as current proposal
+    fs.writeFileSync(proposalPath, JSON.stringify(versionData, null, 2));
+
+    res.json({ success: true, proposal: versionData });
+  } catch (err) {
+    console.error('Version restore error:', err);
+    res.status(500).json({ error: 'Failed to restore version' });
   }
 });
 
@@ -834,8 +1156,8 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
   if (error) {
     return res.status(400).send(`
       <html><body style="font-family: system-ui; padding: 40px; text-align: center;">
-        <h1>Authorization Failed</h1><p>Error: ${error}</p>
-        <a href="/dashboard/os-beta">Back to OS</a>
+        <h1>Authorization Failed</h1><p>Error: ${escapeHtml(error)}</p>
+        <a href="${APP_URL}/schedule">Back to OS</a>
       </body></html>
     `);
   }
@@ -862,7 +1184,7 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
     });
 
     const tokens = await tokenResponse.json();
-    console.log('Google token response:', JSON.stringify(tokens, null, 2));
+    // SECURITY: Do not log tokens - they contain sensitive credentials
     if (tokens.error) throw new Error(tokens.error_description || tokens.error);
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
@@ -883,7 +1205,7 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
         <h1 style="color: #22c55e;">Google Calendar Connected!</h1>
         <p>You can now schedule chunks to your calendar.</p>
         <p style="margin-top: 20px;">
-          <a href="http://localhost:5173/dashboard/os-beta" style="background: #d72027; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
+          <a href="${APP_URL}/schedule" style="background: #d72027; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
             Back to OS
           </a>
         </p>
@@ -894,8 +1216,8 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
     res.status(500).send(`
       <html><body style="font-family: system-ui; padding: 40px; text-align: center;">
         <h1 style="color: #dc2626;">Authorization Failed</h1>
-        <p>${err.message}</p>
-        <a href="/dashboard/os-beta">Back to OS</a>
+        <p>${escapeHtml(err.message)}</p>
+        <a href="${APP_URL}/schedule">Back to OS</a>
       </body></html>
     `);
   }
@@ -1516,6 +1838,363 @@ app.get('/api/os-beta/schedule/rocks', async (req, res) => {
     res.json(rocks);
   } catch (err) {
     console.error('Error fetching rocks:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =============================================================================
+// STRIPE BILLING ENDPOINTS
+// =============================================================================
+
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Create Stripe Checkout Session for saving a card
+app.post('/api/os-beta/stripe/checkout-session', async (req, res) => {
+  try {
+    const { clientId } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({ error: 'clientId is required' });
+    }
+
+    // Get client from database
+    const client = await db.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    const email = client.data?.email || client.email;
+    if (!email) {
+      return res.status(400).json({ error: 'Client has no email address' });
+    }
+
+    // Check if client already has a Stripe customer
+    let stripeCustomerId = client.stripe_customer_id;
+
+    if (!stripeCustomerId) {
+      // Create new Stripe customer
+      const customer = await stripe.customers.create({
+        email: email,
+        name: client.data?.name || client.name,
+        metadata: {
+          os_client_id: clientId
+        }
+      });
+      stripeCustomerId = customer.id;
+
+      // Save Stripe customer ID to database
+      await db.setClientStripeId(clientId, stripeCustomerId);
+    }
+
+    // Create Checkout Session in setup mode (for saving card, no charge)
+    const session = await stripe.checkout.sessions.create({
+      customer: stripeCustomerId,
+      mode: 'setup',
+      payment_method_types: ['card'],
+      success_url: `${req.headers.origin || APP_URL}/hosting?setup=success&client=${encodeURIComponent(clientId)}`,
+      cancel_url: 'https://www.adrialdesigns.com',
+      metadata: {
+        os_client_id: clientId
+      }
+    });
+
+    res.json({
+      sessionId: session.id,
+      url: session.url,
+      customerId: stripeCustomerId
+    });
+  } catch (err) {
+    console.error('Error creating checkout session:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Stripe customer info for a client
+app.get('/api/os-beta/stripe/customer/:clientId', async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    const client = await db.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    if (!client.stripe_customer_id) {
+      return res.json({ hasStripeCustomer: false });
+    }
+
+    // Get customer from Stripe
+    const customer = await stripe.customers.retrieve(client.stripe_customer_id);
+
+    // Get payment methods
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: client.stripe_customer_id,
+      type: 'card'
+    });
+
+    res.json({
+      hasStripeCustomer: true,
+      customerId: customer.id,
+      email: customer.email,
+      paymentMethods: paymentMethods.data.map(pm => ({
+        id: pm.id,
+        brand: pm.card.brand,
+        last4: pm.card.last4,
+        expMonth: pm.card.exp_month,
+        expYear: pm.card.exp_year
+      }))
+    });
+  } catch (err) {
+    console.error('Error getting Stripe customer:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Charge a client's saved card
+app.post('/api/os-beta/stripe/charge', async (req, res) => {
+  try {
+    const { clientId, amount, description } = req.body;
+
+    if (!clientId || !amount) {
+      return res.status(400).json({ error: 'clientId and amount are required' });
+    }
+
+    const client = await db.getClient(clientId);
+    if (!client) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    if (!client.stripe_customer_id) {
+      return res.status(400).json({ error: 'Client has no Stripe customer. They need to complete checkout first.' });
+    }
+
+    // Get default payment method
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: client.stripe_customer_id,
+      type: 'card'
+    });
+
+    if (paymentMethods.data.length === 0) {
+      return res.status(400).json({ error: 'Client has no saved payment method' });
+    }
+
+    const paymentMethodId = paymentMethods.data[0].id;
+
+    // Create payment intent and confirm immediately
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount, // in cents
+      currency: 'usd',
+      customer: client.stripe_customer_id,
+      payment_method: paymentMethodId,
+      off_session: true,
+      confirm: true,
+      description: description || 'Website hosting',
+      metadata: {
+        os_client_id: clientId
+      }
+    });
+
+    res.json({
+      success: true,
+      paymentIntentId: paymentIntent.id,
+      status: paymentIntent.status,
+      amount: paymentIntent.amount
+    });
+  } catch (err) {
+    console.error('Error charging card:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stripe webhook handler
+app.post('/api/os-beta/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  // SECURITY: Fail closed - reject webhooks if secret not configured
+  if (!webhookSecret) {
+    console.error('Stripe webhook rejected: STRIPE_WEBHOOK_SECRET not configured');
+    return res.status(403).json({ error: 'Webhook not configured' });
+  }
+
+  try {
+    const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+
+    console.log('Stripe webhook:', event.type);
+
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        console.log('Checkout completed for customer:', session.customer);
+        // Card is now saved - could trigger notification here
+        break;
+
+      case 'payment_intent.succeeded':
+        const paymentIntent = event.data.object;
+        console.log('Payment succeeded:', paymentIntent.id, paymentIntent.amount);
+        // Could update invoice status here
+        break;
+
+      case 'payment_intent.payment_failed':
+        const failedPayment = event.data.object;
+        console.log('Payment failed:', failedPayment.id);
+        // Could trigger alert here
+        break;
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// =============================================================================
+// RESEND EMAIL ENDPOINTS
+// =============================================================================
+
+// Send billing setup email to a client
+app.post('/api/os-beta/email/billing-setup', async (req, res) => {
+  try {
+    const { clientId, preview } = req.body;
+
+    if (!clientId) {
+      return res.status(400).json({ error: 'clientId is required' });
+    }
+
+    // Get client from hosting_billing
+    const clients = await db.sql`
+      SELECT * FROM hosting_billing WHERE client_id = ${clientId} LIMIT 1
+    `;
+
+    if (clients.length === 0) {
+      return res.status(404).json({ error: 'Client not found' });
+    }
+
+    const client = clients[0];
+
+    if (!client.email) {
+      return res.status(400).json({ error: 'Client has no email address' });
+    }
+
+    if (!client.checkout_link) {
+      return res.status(400).json({ error: 'Client has no checkout link. Generate one first.' });
+    }
+
+    // Build email content
+    const subject = 'Update Your Payment Method - Adrial Designs';
+    const html = `
+      <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2b303a;">Update Your Payment Method</h2>
+
+        <p>Hi ${client.contact_name || client.client_name},</p>
+
+        <p>We're updating our billing system to serve you better. To continue your website hosting service without interruption, please take a moment to securely save your payment card.</p>
+
+        <p style="margin: 24px 0;">
+          <a href="${client.checkout_link}"
+             style="background-color: #2b303a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            Update Payment Method
+          </a>
+        </p>
+
+        <p><strong>Your hosting details:</strong></p>
+        <ul>
+          <li>Service: ${client.project_name}</li>
+          <li>Monthly rate: $${(client.rate_cents / 100).toFixed(2)}</li>
+          <li>Next billing: ${client.next_billing_date ? new Date(client.next_billing_date).toLocaleDateString() : 'Soon'}</li>
+        </ul>
+
+        <p>This secure link will take you to Stripe's payment page. Your card information is never stored on our servers.</p>
+
+        <p>If you have any questions, just reply to this email.</p>
+
+        <p>Thanks,<br>Adrial Dale<br>Adrial Designs</p>
+      </div>
+    `;
+
+    // If preview mode, return the email content without sending
+    if (preview) {
+      return res.json({
+        preview: true,
+        to: client.email,
+        subject,
+        html
+      });
+    }
+
+    // Send via Resend
+    const { Resend } = require('resend');
+    const resendKey = process.env.RESEND_API_KEY;
+
+    if (!resendKey) {
+      return res.status(500).json({ error: 'RESEND_API_KEY not configured' });
+    }
+
+    const resend = new Resend(resendKey);
+    const { data, error } = await resend.emails.send({
+      from: 'Adrial Designs <billing@adrialdesigns.com>',
+      to: client.email,
+      subject,
+      html
+    });
+
+    if (error) {
+      console.error('Resend error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Update hosting_billing to track that email was sent
+    await db.sql`
+      UPDATE hosting_billing
+      SET updated_at = NOW()
+      WHERE client_id = ${clientId}
+    `;
+
+    res.json({
+      success: true,
+      messageId: data.id,
+      to: client.email
+    });
+  } catch (err) {
+    console.error('Error sending email:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =============================================================================
+// HOSTING BILLING ENDPOINTS
+// =============================================================================
+
+// Get all hosting billing records
+app.get('/api/os-beta/hosting', async (req, res) => {
+  try {
+    const records = await db.sql`
+      SELECT * FROM hosting_billing
+      ORDER BY client_name ASC
+    `;
+    res.json(records);
+  } catch (err) {
+    console.error('Error fetching hosting:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get hosting summary stats
+app.get('/api/os-beta/hosting/summary', async (req, res) => {
+  try {
+    const summary = await db.sql`
+      SELECT
+        COUNT(*) as total_clients,
+        COUNT(CASE WHEN webflow_cost_cents > 0 THEN 1 END) as active_clients,
+        SUM(CASE WHEN webflow_cost_cents > 0 THEN rate_cents ELSE 0 END) as total_mrr,
+        SUM(CASE WHEN webflow_cost_cents > 0 THEN webflow_cost_cents ELSE 0 END) as total_webflow_cost,
+        SUM(CASE WHEN webflow_cost_cents > 0 THEN profit_cents ELSE 0 END) as total_profit
+      FROM hosting_billing
+    `;
+    res.json(summary[0]);
+  } catch (err) {
+    console.error('Error fetching hosting summary:', err);
     res.status(500).json({ error: err.message });
   }
 });

@@ -6,11 +6,37 @@
 
 import { neon } from '@neondatabase/serverless'
 
+// Allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3002',
+  'https://adesigns-estimate.vercel.app',
+  'https://adrialdesigns.com'
+];
+
+// App URL for redirects
+const APP_URL = process.env.APP_URL || 'https://adesigns-estimate.vercel.app';
+
+// HTML escape helper to prevent XSS
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 export default async function handler(req, res) {
-  // CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  // CORS headers - restrict to allowed origins
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
@@ -87,6 +113,9 @@ export default async function handler(req, res) {
 
       case 'feedback':
         return id ? handleFeedbackById(req, res, sql, id) : handleFeedback(req, res, sql)
+
+      case 'hosting':
+        return id === 'summary' ? handleHostingSummary(req, res, sql) : handleHosting(req, res, sql)
 
       default:
         return res.status(404).json({ error: 'Route not found', path: pathSegments })
@@ -235,7 +264,7 @@ async function handleChunks(req, res, sql) {
         FROM chunks c
         JOIN projects p ON c.project_id = p.id
         WHERE c.status = 'pending'
-        ORDER BY p.priority DESC, p.last_touched_at DESC
+        ORDER BY p.priority DESC, p.last_touched_at DESC, c.phase_order ASC NULLS LAST, c.draft_order ASC NULLS LAST
       `
       return res.status(200).json(rows)
     }
@@ -244,30 +273,33 @@ async function handleChunks(req, res, sql) {
       return res.status(400).json({ error: 'project_id is required' })
     }
 
+    // Order by phase_order first (to keep phases in order), then draft_order within each phase
+    const orderClause = 'ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST, created_at ASC'
+
     let rows
     if (status && phase_name) {
       rows = await sql`
         SELECT * FROM chunks
         WHERE project_id = ${project_id} AND status = ${status} AND phase_name = ${phase_name}
-        ORDER BY created_at ASC
+        ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST, created_at ASC
       `
     } else if (status) {
       rows = await sql`
         SELECT * FROM chunks
         WHERE project_id = ${project_id} AND status = ${status}
-        ORDER BY created_at ASC
+        ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST, created_at ASC
       `
     } else if (phase_name) {
       rows = await sql`
         SELECT * FROM chunks
         WHERE project_id = ${project_id} AND phase_name = ${phase_name}
-        ORDER BY created_at ASC
+        ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST, created_at ASC
       `
     } else {
       rows = await sql`
         SELECT * FROM chunks
         WHERE project_id = ${project_id}
-        ORDER BY phase_name ASC NULLS LAST, created_at ASC
+        ORDER BY phase_order ASC NULLS LAST, draft_order ASC NULLS LAST, created_at ASC
       `
     }
 
@@ -682,7 +714,7 @@ async function handleInvoices(req, res, sql) {
     const {
       id, client_id, status = 'draft', subtotal = 0, discount_percent = 0,
       tax_percent = 0, total = 0, line_items = [], notes, due_date,
-      time_log_ids = []
+      time_log_ids = [], is_hosting = false, billing_cycle = null
     } = invoice
 
     if (!client_id) {
@@ -692,10 +724,11 @@ async function handleInvoices(req, res, sql) {
     await sql`
       INSERT INTO invoices (
         id, client_id, status, subtotal, discount_percent, tax_percent,
-        total, line_items, notes, due_date
+        total, line_items, notes, due_date, is_hosting, billing_cycle
       ) VALUES (
         ${id}, ${client_id}, ${status}, ${subtotal}, ${discount_percent},
-        ${tax_percent}, ${total}, ${JSON.stringify(line_items)}, ${notes}, ${due_date}
+        ${tax_percent}, ${total}, ${JSON.stringify(line_items)}, ${notes}, ${due_date},
+        ${is_hosting}, ${billing_cycle}
       )
     `
 
@@ -730,7 +763,7 @@ async function handleInvoiceById(req, res, sql, id) {
     const allowedFields = [
       'stripe_invoice_id', 'stripe_invoice_url', 'status', 'subtotal',
       'discount_percent', 'tax_percent', 'total', 'line_items', 'notes',
-      'due_date', 'paid_at', 'sent_at'
+      'due_date', 'paid_at', 'sent_at', 'is_hosting', 'billing_cycle'
     ]
 
     const sets = []
@@ -953,8 +986,8 @@ async function handleGoogleCallback(req, res, sql) {
       <html>
         <body style="font-family: system-ui; padding: 40px; text-align: center;">
           <h1>Authorization Failed</h1>
-          <p>Error: ${error}</p>
-          <a href="/dashboard/os-beta">Back to OS</a>
+          <p>Error: ${escapeHtml(error)}</p>
+          <a href="${APP_URL}/schedule">Back to OS</a>
         </body>
       </html>
     `)
@@ -1010,7 +1043,7 @@ async function handleGoogleCallback(req, res, sql) {
           <h1 style="color: #22c55e;">Google Calendar Connected!</h1>
           <p>You can now schedule chunks to your calendar.</p>
           <p style="margin-top: 20px;">
-            <a href="/dashboard/os-beta" style="background: #d72027; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
+            <a href="${APP_URL}/schedule" style="background: #d72027; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
               Back to OS
             </a>
           </p>
@@ -1023,8 +1056,8 @@ async function handleGoogleCallback(req, res, sql) {
       <html>
         <body style="font-family: system-ui; padding: 40px; text-align: center;">
           <h1 style="color: #dc2626;">Authorization Failed</h1>
-          <p>${err.message}</p>
-          <a href="/dashboard/os-beta">Back to OS</a>
+          <p>${escapeHtml(err.message)}</p>
+          <a href="${APP_URL}/schedule">Back to OS</a>
         </body>
       </html>
     `)
@@ -1164,9 +1197,12 @@ async function handleProposalConvert(req, res, sql, proposalId) {
     )
   `
 
-  // Create chunks from phases
+  // Create chunks from phases with proper ordering
   const chunks = []
-  for (const phase of (proposalData.phases || [])) {
+  const phases = proposalData.phases || []
+
+  for (let phaseIndex = 0; phaseIndex < phases.length; phaseIndex++) {
+    const phase = phases[phaseIndex]
     const avgHours = Math.round((phase.hoursLow + phase.hoursHigh) / 2)
     const numChunks = Math.ceil(avgHours / 3)
 
@@ -1177,9 +1213,10 @@ async function handleProposalConvert(req, res, sql, proposalId) {
       const chunkId = `chk-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`
       const chunkName = numChunks > 1 ? `${phase.name} (${i + 1}/${numChunks})` : phase.name
 
+      // Set phase_order and draft_order for proper chronological ordering
       await sql`
-        INSERT INTO chunks (id, project_id, phase_name, name, description, hours, status)
-        VALUES (${chunkId}, ${projectId}, ${phase.name}, ${chunkName}, ${phase.description}, ${chunkHours}, 'pending')
+        INSERT INTO chunks (id, project_id, phase_name, name, description, hours, status, phase_order, draft_order)
+        VALUES (${chunkId}, ${projectId}, ${phase.name}, ${chunkName}, ${phase.description}, ${chunkHours}, 'pending', ${phaseIndex}, ${i})
       `
 
       chunks.push({ id: chunkId, name: chunkName, hours: chunkHours, phase: phase.name })
@@ -1242,30 +1279,37 @@ async function handleScheduleGenerate(req, res, sql) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  // Get pending chunks
+  // Get pending chunks - order by project priority, then phase/draft order within each project
   const chunks = await sql`
     SELECT c.*, p.name as project_name, p.client_id, p.priority, p.last_touched_at
     FROM chunks c
     JOIN projects p ON c.project_id = p.id
     WHERE c.status = 'pending'
       AND p.status = 'active'
-    ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST
+    ORDER BY p.priority DESC, p.last_touched_at DESC NULLS LAST, c.phase_order ASC NULLS LAST, c.draft_order ASC NULLS LAST
   `
 
   if (chunks.length === 0) {
     return res.status(400).json({ error: 'No pending chunks to schedule' })
   }
 
-  // Calculate week bounds (next week)
+  // Calculate total hours needed and weeks required
+  const totalHoursNeeded = chunks.reduce((sum, c) => sum + c.hours, 0)
+  const hoursPerWeek = MAX_HOURS_PER_DAY * 5 // 6 hours/day × 5 days = 30 hours/week
+  const weeksNeeded = Math.ceil(totalHoursNeeded / hoursPerWeek) + 1 // +1 buffer for calendar conflicts
+
+  // Calculate date range (start from next Monday, extend for all needed weeks)
   const now = new Date()
   const dayOfWeek = now.getDay()
   const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7
   const monday = new Date(now)
   monday.setDate(now.getDate() + daysUntilMonday)
   monday.setHours(0, 0, 0, 0)
-  const friday = new Date(monday)
-  friday.setDate(monday.getDate() + 4)
-  friday.setHours(23, 59, 59, 999)
+
+  // End date is weeksNeeded weeks later
+  const endDate = new Date(monday)
+  endDate.setDate(monday.getDate() + (weeksNeeded * 7))
+  endDate.setHours(23, 59, 59, 999)
 
   // Fetch calendar rocks if Google is connected
   let rocks = []
@@ -1295,13 +1339,14 @@ async function handleScheduleGenerate(req, res, sql) {
         }
       }
 
-      // Fetch events
+      // Fetch events for the entire scheduling range
       const calendarId = process.env.GOOGLE_REFERENCE_CALENDAR_ID || 'primary'
       const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`)
       url.searchParams.set('timeMin', monday.toISOString())
-      url.searchParams.set('timeMax', friday.toISOString())
+      url.searchParams.set('timeMax', endDate.toISOString())
       url.searchParams.set('singleEvents', 'true')
       url.searchParams.set('orderBy', 'startTime')
+      url.searchParams.set('maxResults', '500') // Increase limit for longer ranges
 
       const calRes = await fetch(url.toString(), { headers: { 'Authorization': `Bearer ${accessToken}` } })
       if (calRes.ok) {
@@ -1326,12 +1371,12 @@ async function handleScheduleGenerate(req, res, sql) {
     console.error('Calendar fetch error:', err)
   }
 
-  // Generate time slots
+  // Generate time slots for all needed weeks (weekdays only)
   const slots = []
   const current = new Date(monday)
-  while (current <= friday) {
-    const dayOfWeek = current.getDay()
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+  while (current <= endDate) {
+    const dow = current.getDay()
+    if (dow !== 0 && dow !== 6) { // Skip weekends
       for (let hour = WORK_START_HOUR; hour < WORK_END_HOUR; hour++) {
         const slotStart = new Date(current)
         slotStart.setHours(hour, 0, 0, 0)
@@ -1343,7 +1388,7 @@ async function handleScheduleGenerate(req, res, sql) {
     current.setDate(current.getDate() + 1)
   }
 
-  // Mark rocks
+  // Mark calendar rocks as unavailable
   let rocksAvoided = 0
   for (const slot of slots) {
     for (const rock of rocks) {
@@ -1355,16 +1400,14 @@ async function handleScheduleGenerate(req, res, sql) {
     }
   }
 
-  // Schedule chunks
+  // Schedule chunks - already sorted by SQL query (priority DESC, last_touched DESC, phase_order ASC, draft_order ASC)
   const scheduled = []
   let slotIndex = 0
   let hoursScheduledToday = 0
   let currentDay = null
 
-  const sortedChunks = [...chunks].sort((a, b) => {
-    if (b.priority !== a.priority) return b.priority - a.priority
-    return new Date(b.last_touched_at || 0) - new Date(a.last_touched_at || 0)
-  })
+  // Use chunks as-is from SQL query - they're already properly ordered
+  const sortedChunks = chunks
 
   for (const chunk of sortedChunks) {
     const hoursNeeded = chunk.hours
@@ -1403,7 +1446,8 @@ async function handleScheduleGenerate(req, res, sql) {
   // Save draft
   const draftId = `draft-${Date.now().toString(36)}`
 
-  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`
+  // Clear draft schedule times (preserve draft_order which defines chunk sequence within phases)
+  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL`
   await sql`UPDATE schedule_drafts SET status = 'expired', updated_at = NOW() WHERE status = 'draft'`
 
   await sql`
@@ -1424,7 +1468,6 @@ async function handleScheduleGenerate(req, res, sql) {
       UPDATE chunks
       SET draft_scheduled_start = ${start.toISOString()},
           draft_scheduled_end = ${end.toISOString()},
-          draft_order = ${i},
           updated_at = NOW()
       WHERE id = ${chunk.id}
     `
@@ -1529,7 +1572,6 @@ async function handleSchedulePublish(req, res, sql) {
               status = 'scheduled',
               draft_scheduled_start = NULL,
               draft_scheduled_end = NULL,
-              draft_order = NULL,
               updated_at = NOW()
           WHERE id = ${chunk.id}
         `
@@ -1557,7 +1599,8 @@ async function handleScheduleClear(req, res, sql) {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL, draft_order = NULL`
+  // Clear draft schedule times (preserve draft_order which defines chunk sequence within phases)
+  await sql`UPDATE chunks SET draft_scheduled_start = NULL, draft_scheduled_end = NULL`
   await sql`UPDATE schedule_drafts SET status = 'rejected', updated_at = NOW() WHERE status = 'draft'`
 
   return res.status(200).json({ success: true })
@@ -1604,4 +1647,35 @@ async function handleFeedbackById(req, res, sql, id) {
   }
 
   return res.status(405).json({ error: 'Method not allowed' })
+}
+
+// ============ HOSTING BILLING ============
+
+async function handleHosting(req, res, sql) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const rows = await sql`
+    SELECT * FROM hosting_billing
+    ORDER BY client_name ASC
+  `
+  return res.status(200).json(rows)
+}
+
+async function handleHostingSummary(req, res, sql) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  const rows = await sql`
+    SELECT
+      COUNT(*) as total_clients,
+      COUNT(CASE WHEN webflow_cost_cents > 0 THEN 1 END) as active_clients,
+      SUM(CASE WHEN webflow_cost_cents > 0 THEN rate_cents ELSE 0 END) as total_mrr,
+      SUM(CASE WHEN webflow_cost_cents > 0 THEN webflow_cost_cents ELSE 0 END) as total_webflow_cost,
+      SUM(CASE WHEN webflow_cost_cents > 0 THEN profit_cents ELSE 0 END) as total_profit
+    FROM hosting_billing
+  `
+  return res.status(200).json(rows[0])
 }
