@@ -102,7 +102,7 @@ const PinEntry = ({ onSuccess }) => {
         setAuthToken(data.token)
         onSuccess()
       } else {
-        setError('Invalid PIN')
+        setError('Invalid password')
         setPin('')
       }
     } catch (err) {
@@ -116,26 +116,23 @@ const PinEntry = ({ onSuccess }) => {
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 w-80">
         <div className="flex items-center gap-3 mb-6">
           <Lock className="w-5 h-5 text-slate-400" />
-          <h2 className="text-lg font-medium text-slate-900">Enter PIN to Access</h2>
+          <h2 className="text-lg font-medium text-slate-900">Login</h2>
         </div>
         <input
           type="password"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={4}
           value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-          placeholder="••••"
-          className="w-full px-4 py-3 text-center text-2xl tracking-widest border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400"
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="Enter password"
+          className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400"
           autoFocus
         />
         {error && <p className="text-red-500 text-sm mt-2 text-center">{error}</p>}
         <button
           type="submit"
-          disabled={pin.length < 4 || loading}
+          disabled={pin.length < 1 || loading}
           className="w-full mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? 'Checking...' : 'Unlock'}
+          {loading ? 'Checking...' : 'Login'}
         </button>
       </form>
     </div>
