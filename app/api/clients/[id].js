@@ -1,24 +1,16 @@
 import { neon } from '@neondatabase/serverless'
-
-// Allowed origins for CORS
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3002',
-  'https://adesigns-estimate.vercel.app',
-  'https://adrialdesigns.com'
-];
+import { requireAuth, setCorsHeaders } from '../lib/auth.js'
 
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-  }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  setCorsHeaders(req, res);
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
+  }
+
+  // Require authentication
+  if (!requireAuth(req)) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
 
   const sql = neon(process.env.DATABASE_URL)

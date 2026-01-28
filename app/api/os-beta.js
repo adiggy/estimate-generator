@@ -5,6 +5,7 @@
  */
 
 import { neon } from '@neondatabase/serverless'
+import crypto from 'crypto'
 
 // Allowed origins for CORS
 const allowedOrigins = [
@@ -28,6 +29,27 @@ function escapeHtml(str) {
     .replace(/'/g, '&#039;');
 }
 
+// Verify a signed session token (matches auth.js)
+function verifySessionToken(token) {
+  if (!token) return false;
+  const secret = process.env.SESSION_SECRET || process.env.LOGIN_PW;
+  if (!secret) return false;
+
+  const [expiresAt, signature] = token.split('.');
+  if (!expiresAt || !signature) return false;
+
+  // Check expiration
+  if (Date.now() > parseInt(expiresAt)) return false;
+
+  // Verify signature
+  const expectedSignature = crypto.createHmac('sha256', secret).update(expiresAt).digest('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(req, res) {
   // CORS headers - restrict to allowed origins
   const origin = req.headers.origin;
@@ -35,11 +57,23 @@ export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', origin);
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   res.setHeader('Access-Control-Allow-Credentials', 'true')
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
+  }
+
+  // AUTHENTICATION: Require valid token for all requests
+  // Exception: ?view=1 allows public proposal viewing
+  const isPublicView = req.query.view === '1';
+  if (!isPublicView) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!verifySessionToken(token)) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
   }
 
   const sql = neon(process.env.DATABASE_URL)

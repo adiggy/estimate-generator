@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const { z } = require('zod');
 require('dotenv').config();
 
 // OS database utilities
@@ -17,6 +19,196 @@ const CLIENTS_FILE = path.join(DATA_DIR, 'clients.json');
 
 // App URL for redirects (defaults to localhost for development)
 const APP_URL = process.env.APP_URL || 'http://localhost:5173';
+
+// =============================================================================
+// RATE LIMITING
+// =============================================================================
+
+// Strict rate limit for auth endpoint (prevent brute force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts per window
+  message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all requests
+});
+
+// General API rate limit
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute
+  message: { error: 'Too many requests. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// =============================================================================
+// INPUT VALIDATION SCHEMAS (Zod)
+// =============================================================================
+
+const schemas = {
+  // Auth
+  auth: z.object({
+    pin: z.string().min(1, 'PIN is required'),
+  }),
+
+  // Client
+  client: z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    company: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+    address: z.string().optional(),
+  }),
+
+  // Proposal
+  proposal: z.object({
+    id: z.string().optional(),
+    projectName: z.string().min(1, 'Project name is required'),
+    clientName: z.string().min(1, 'Client name is required'),
+    clientCompany: z.string().optional(),
+    projectType: z.string().optional(),
+    status: z.enum(['draft', 'sent', 'accepted', 'declined']).optional(),
+    phases: z.array(z.any()).optional(),
+  }).passthrough(), // Allow additional fields
+
+  // Project
+  project: z.object({
+    id: z.string().optional(),
+    client_id: z.string().min(1, 'Client ID is required'),
+    name: z.string().min(1, 'Project name is required'),
+    description: z.string().optional(),
+    status: z.enum(['active', 'waiting_on', 'paused', 'done', 'invoiced', 'archived']).optional(),
+    priority: z.number().int().min(-2).max(1).optional(),
+    billing_type: z.enum(['hourly', 'fixed', 'retainer']).optional(),
+    rate: z.number().int().nonnegative().optional(),
+  }).passthrough(),
+
+  // Chunk
+  chunk: z.object({
+    id: z.string().optional(),
+    project_id: z.string().min(1, 'Project ID is required'),
+    phase_name: z.string().optional(),
+    name: z.string().min(1, 'Chunk name is required'),
+    description: z.string().optional(),
+    hours: z.number().positive().optional(),
+    status: z.enum(['pending', 'scheduled', 'in_progress', 'done']).optional(),
+  }).passthrough(),
+
+  // Time log
+  timeLog: z.object({
+    id: z.string().optional(),
+    project_id: z.string().min(1, 'Project ID is required'),
+    chunk_id: z.string().optional().nullable(),
+    description: z.string().optional(),
+    hours: z.number().positive().optional(),
+    date: z.string().optional(),
+    status: z.enum(['active', 'paused', 'stopped', 'finalized']).optional(),
+  }).passthrough(),
+
+  // Invoice
+  invoice: z.object({
+    id: z.string().optional(),
+    client_id: z.string().min(1, 'Client ID is required'),
+    project_id: z.string().optional().nullable(),
+    total: z.number().int().nonnegative(),
+    status: z.enum(['draft', 'sent', 'paid', 'overdue', 'cancelled']).optional(),
+    line_items: z.array(z.any()).optional(),
+  }).passthrough(),
+
+  // Stripe charge
+  stripeCharge: z.object({
+    clientId: z.string().min(1, 'Client ID is required'),
+    amount: z.number().int().positive('Amount must be positive'),
+    description: z.string().optional(),
+  }),
+};
+
+// Validation middleware factory
+function validate(schema) {
+  return (req, res, next) => {
+    try {
+      req.body = schema.parse(req.body);
+      next();
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: err.errors.map(e => ({
+            field: e.path.join('.'),
+            message: e.message
+          }))
+        });
+      }
+      next(err);
+    }
+  };
+}
+
+// =============================================================================
+// SESSION-BASED AUTHENTICATION
+// =============================================================================
+
+const crypto = require('crypto');
+
+// In-memory session store (in production, use Redis or similar)
+const sessions = new Map();
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+function generateSessionToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+function createSession() {
+  const token = generateSessionToken();
+  const expiresAt = Date.now() + SESSION_DURATION;
+  sessions.set(token, { expiresAt });
+  return token;
+}
+
+function validateSession(token) {
+  if (!token) return false;
+  const session = sessions.get(token);
+  if (!session) return false;
+  if (Date.now() > session.expiresAt) {
+    sessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function destroySession(token) {
+  sessions.delete(token);
+}
+
+// Clean up expired sessions periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [token, session] of sessions) {
+    if (now > session.expiresAt) {
+      sessions.delete(token);
+    }
+  }
+}, 60 * 60 * 1000); // Clean every hour
+
+// Authentication middleware
+function requireAuth(req, res, next) {
+  // Allow public proposal view
+  if (req.query.view === '1') {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!validateSession(token)) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  next();
+}
 
 // HTML escape helper to prevent XSS
 function escapeHtml(str) {
@@ -59,23 +251,57 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Auth endpoint (matches Vercel serverless function)
-app.post('/api/auth', (req, res) => {
-  const { pin } = req.body;
-  const correctPin = process.env.EDIT_PIN;
+// Apply general rate limiting to all API routes
+app.use('/api/', apiLimiter);
 
-  // SECURITY: Require EDIT_PIN to be set - no fallback
+// Auth endpoint with strict rate limiting
+app.post('/api/auth', authLimiter, validate(schemas.auth), (req, res) => {
+  const { pin } = req.body;
+  const correctPin = process.env.LOGIN_PW;
+
+  // SECURITY: Require LOGIN_PW to be set - no fallback
   if (!correctPin) {
-    console.error('EDIT_PIN environment variable not set');
+    console.error('LOGIN_PW environment variable not set');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
   if (pin === correctPin) {
-    res.json({ success: true });
+    const token = createSession();
+    res.json({ success: true, token });
   } else {
     res.status(401).json({ error: 'Invalid PIN' });
   }
 });
+
+// Logout endpoint
+app.post('/api/auth/logout', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  if (token) {
+    destroySession(token);
+  }
+  res.json({ success: true });
+});
+
+// Verify session endpoint
+app.get('/api/auth/verify', (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.replace('Bearer ', '');
+  if (validateSession(token)) {
+    res.json({ valid: true });
+  } else {
+    res.status(401).json({ valid: false });
+  }
+});
+
+// =============================================================================
+// PROTECTED API ROUTES - Require authentication
+// =============================================================================
+// Apply auth middleware to all routes below this point
+app.use('/api/clients', requireAuth);
+app.use('/api/templates', requireAuth);
+app.use('/api/proposals', requireAuth);
+app.use('/api/os-beta', requireAuth);
 
 // Get all clients
 app.get('/api/clients', (req, res) => {
@@ -103,7 +329,7 @@ app.get('/api/clients/:id', (req, res) => {
 });
 
 // Create/update client
-app.post('/api/clients', (req, res) => {
+app.post('/api/clients', validate(schemas.client), (req, res) => {
   try {
     const data = JSON.parse(fs.readFileSync(CLIENTS_FILE, 'utf8'));
     const existingIndex = data.clients.findIndex(c => c.id === req.body.id);

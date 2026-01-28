@@ -1,18 +1,48 @@
 import { useState, useEffect, useCallback } from 'react'
-import { BrowserRouter, Routes, Route, useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { Printer, Copy, Check, Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon, Lock } from 'lucide-react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom'
+import { Printer, Copy, Check, Palette, Layout as LayoutIcon, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon, Lock, Save, History, ChevronDown, RotateCcw, X } from 'lucide-react'
+
+// Import unified Layout and pages
+import Layout from './components/Layout'
+import VersionModal from './components/VersionModal'
+import ConfirmModal from './components/ConfirmModal'
+import DashboardPage from './pages/DashboardPage'
+import ProposalsPage from './pages/ProposalsPage'
+import ProjectsPage from './pages/ProjectsPage'
+import ProjectDetailsPage from './pages/ProjectDetailsPage'
+import HostingPage from './pages/HostingPage'
+import TimePage from './pages/TimePage'
+import InvoicesPage from './pages/InvoicesPage'
+import SchedulePage from './pages/SchedulePage'
+import MasterTimelinePage from './pages/MasterTimelinePage'
+import FeedbackPage from './pages/FeedbackPage'
+import SearchPage from './pages/SearchPage'
 
 // Use relative path for Vercel, localhost for dev
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api' : '/api'
 
-// Check if user is authenticated (PIN verified)
-const isAuthenticated = () => localStorage.getItem('estimateAuth') === 'true'
-const setAuthenticated = (value) => {
-  if (value) {
-    localStorage.setItem('estimateAuth', 'true')
+// Token-based authentication
+const getAuthToken = () => localStorage.getItem('authToken')
+const setAuthToken = (token) => {
+  if (token) {
+    localStorage.setItem('authToken', token)
   } else {
-    localStorage.removeItem('estimateAuth')
+    localStorage.removeItem('authToken')
   }
+}
+const isAuthenticated = () => !!getAuthToken()
+
+// Helper for authenticated fetch requests
+const authFetch = async (url, options = {}) => {
+  const token = getAuthToken()
+  const headers = {
+    ...options.headers,
+    'Content-Type': 'application/json',
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+  return fetch(url, { ...options, headers })
 }
 
 const Logo = () => (
@@ -42,37 +72,12 @@ const Logo = () => (
       <path d="M424.2,43.4c5.7,0,9.6-3.2,9.6-7.3s-2.9-5.5-6.3-6.6l-5.1-1.7c-1.3-.4-1.9-1-1.9-1.8s1.3-1.9,3.2-1.9,4.1,1.1,4.7,2.8l5.1-1.5c-.9-3.4-4.4-6.1-9.6-6.1s-9,3.1-9,6.9,2.3,5.1,5.3,6.1l5.8,1.9c1.5.5,2.2,1.2,2.2,2.2s-1.4,2.2-3.6,2.2-5-1.7-5.6-3.9l-5.2,1.6c.9,3.7,4.2,7.1,10.5,7.1h-.1Z"/>
     </g>
     <g fill="#9ca3af">
-      <path d="M122,71.7l2.9-.9c.5,2.3,2.5,4,5.5,4s4.3-1.5,4.3-3-.8-2-2.8-2.7l-4.7-1.5c-2.5-.8-4.3-2.3-4.3-4.7s2.8-5.4,7-5.4,6.7,2.1,7.5,4.8l-2.8.8c-.6-1.8-2.4-3-4.8-3s-3.8,1.2-3.8,2.6.7,1.7,2.5,2.3l4.4,1.4c2.9,1,4.9,2.2,4.9,5.1s-3,5.9-7.5,5.9-7.5-2.8-8.2-5.8h0Z"/>
-      <path d="M141.5,72.7v-6.7h-2.5v-2.6h2.5v-4.6h2.9v4.6h4.4v2.6h-4.4v6.7c0,1.3.6,2.1,2,2.1s1.2-.1,1.8-.4l.7,2.4c-1,.4-2,.7-3.1.7-3,0-4.3-1.9-4.3-4.7h0Z"/>
-      <path d="M151.7,63.4h2.9v2.2c.8-1.7,2.4-2.7,4.7-2.4v2.7c-3-.4-4.7,1-4.7,5.1v6.2h-2.9v-13.8Z"/>
-      <path d="M160.2,70.3c0-4.2,3-7.3,6.9-7.3s3.9.9,4.9,2.4v-2h2.9v13.8h-2.9v-2.1c-1,1.5-2.7,2.4-4.9,2.4-3.9,0-6.9-3.1-6.9-7.3h0ZM172.1,70.3c0-2.7-2-4.6-4.5-4.6s-4.5,1.9-4.5,4.6,1.9,4.7,4.5,4.7,4.5-2,4.5-4.7Z"/>
-      <path d="M179.8,72.7v-6.7h-2.5v-2.6h2.5v-4.6h2.9v4.6h4.4v2.6h-4.4v6.7c0,1.3.6,2.1,2,2.1s1.2-.1,1.8-.4l.7,2.4c-1,.4-2,.7-3.1.7-3,0-4.3-1.9-4.3-4.7h0Z"/>
-      <path d="M188.6,70.3c0-4.1,2.9-7.3,7.1-7.3s7,3.1,7,7,0,.7,0,1.1h-11.2c.2,2.3,1.8,3.9,4.6,3.9s3.3-1,3.9-2.2l2.7.8c-.9,1.9-3,3.9-6.6,3.9s-7.4-2.9-7.4-7.3h-.1ZM195.7,65.6c-2.4,0-4.1,1.7-4.3,3.7h8.4c-.2-2.1-1.7-3.7-4.2-3.7h.1Z"/>
-      <path d="M205.9,79.7l2.7-1c.8,1.4,2,2.1,4,2.1s4.1-1.8,4.1-4.2v-2c-1.1,1.5-2.8,2.3-4.9,2.3-4,0-6.9-3.1-6.9-7s2.9-7,6.9-7,3.8.9,4.9,2.3v-2h2.9v13.3c0,3.8-2.8,6.6-7.1,6.6s-5.4-1.5-6.6-3.6v.2ZM216.7,70c0-2.5-1.9-4.4-4.5-4.4s-4.5,1.8-4.5,4.4,1.8,4.4,4.5,4.4,4.5-1.8,4.5-4.4Z"/>
-      <path d="M223,59.4c0-1,.8-1.8,1.8-1.8s1.8.8,1.8,1.8-.8,1.8-1.8,1.8-1.8-.8-1.8-1.8ZM223.3,63.4h2.9v13.8h-2.9v-13.8Z"/>
-      <path d="M229.2,70.3c0-4.1,3.1-7.3,7.3-7.3s6,2.4,6.6,4.4l-2.7.8c-.4-1.3-1.8-2.6-3.9-2.6s-4.4,2.1-4.4,4.6,1.7,4.7,4.4,4.7,3.5-1.2,3.9-2.5l2.7.8c-.5,2-2.9,4.3-6.5,4.3s-7.3-3.2-7.3-7.3h-.1Z"/>
-      <path d="M252.9,63.4h2.9v2c.9-1.3,2.3-2.3,4.3-2.3s3.5.9,4.3,2.4c.9-1.3,2.5-2.4,4.8-2.4s5.4,2.1,5.4,5.9v8.3h-2.9v-7.7c0-2.3-1-3.8-3.1-3.8s-3.4,1.6-3.4,4.3v7.2h-2.9v-7.7c0-2.3-.9-3.8-3-3.8s-3.5,1.7-3.5,4.5v7h-2.9v-13.8h0Z"/>
-      <path d="M277.5,70.3c0-4.2,3-7.3,6.9-7.3s3.9.9,4.9,2.4v-2h2.9v13.8h-2.9v-2.1c-1,1.5-2.7,2.4-4.9,2.4-3.9,0-6.9-3.1-6.9-7.3h0ZM289.4,70.3c0-2.7-2-4.6-4.5-4.6s-4.5,1.9-4.5,4.6,1.9,4.7,4.5,4.7,4.5-2,4.5-4.7Z"/>
-      <path d="M296.1,63.4h2.9v2.2c.8-1.7,2.4-2.7,4.7-2.4v2.7c-3-.4-4.7,1-4.7,5.1v6.2h-2.9v-13.8Z"/>
-      <path d="M306.3,57.1h2.9v12.5l5.7-6.2h3.5l-5.5,6,6.2,7.9h-3.4l-4.6-5.8-1.8,2v3.8h-2.9v-20.1h-.1Z"/>
-      <path d="M319.5,70.3c0-4.1,2.9-7.3,7.1-7.3s7,3.1,7,7,0,.7,0,1.1h-11.2c.2,2.3,1.8,3.9,4.6,3.9s3.3-1,3.9-2.2l2.7.8c-.9,1.9-3,3.9-6.6,3.9s-7.4-2.9-7.4-7.3h-.1ZM326.7,65.6c-2.4,0-4.1,1.7-4.3,3.7h8.4c-.2-2.1-1.7-3.7-4.2-3.7h.1Z"/>
-      <path d="M337.3,72.7v-6.7h-2.5v-2.6h2.5v-4.6h2.9v4.6h4.4v2.6h-4.4v6.7c0,1.3.6,2.1,2,2.1s1.2-.1,1.8-.4l.7,2.4c-1,.4-2,.7-3.1.7-3,0-4.3-1.9-4.3-4.7h0Z"/>
-      <path d="M347.2,59.4c0-1,.8-1.8,1.8-1.8s1.8.8,1.8,1.8-.8,1.8-1.8,1.8-1.8-.8-1.8-1.8ZM347.6,63.4h2.9v13.8h-2.9v-13.8Z"/>
-      <path d="M354.3,63.4h2.9v2.1c.9-1.4,2.5-2.5,4.8-2.5,3.5,0,5.5,2.3,5.5,6.1v8.1h-2.9v-7.6c0-2.4-1.2-3.9-3.4-3.9s-3.9,1.8-3.9,4.6v6.9h-2.9v-13.8h-.1Z"/>
-      <path d="M371.3,79.7l2.7-1c.8,1.4,2,2.1,4,2.1s4.1-1.8,4.1-4.2v-2c-1.1,1.5-2.8,2.3-4.9,2.3-4,0-6.9-3.1-6.9-7s2.9-7,6.9-7,3.8.9,4.9,2.3v-2h2.9v13.3c0,3.8-2.8,6.6-7.1,6.6s-5.4-1.5-6.6-3.6v.2ZM382.1,70c0-2.5-1.9-4.4-4.5-4.4s-4.5,1.8-4.5,4.4,1.8,4.4,4.5,4.4,4.5-1.8,4.5-4.4Z"/>
-      <path d="M394.8,70.3c0-4.2,3-7.3,6.9-7.3s3.9.9,4.9,2.4v-8.3h2.9v20.1h-2.9v-2.1c-1,1.5-2.7,2.4-4.9,2.4-3.9,0-6.9-3.1-6.9-7.3h0ZM406.7,70.3c0-2.7-2-4.6-4.5-4.6s-4.5,1.9-4.5,4.6,1.9,4.7,4.5,4.7,4.5-2,4.5-4.7Z"/>
-      <path d="M412.5,70.3c0-4.1,2.9-7.3,7.1-7.3s7,3.1,7,7,0,.7,0,1.1h-11.2c.2,2.3,1.8,3.9,4.6,3.9s3.3-1,3.9-2.2l2.7.8c-.9,1.9-3,3.9-6.6,3.9s-7.4-2.9-7.4-7.3h0ZM419.7,65.6c-2.4,0-4.1,1.7-4.3,3.7h8.4c-.2-2.1-1.7-3.7-4.2-3.7h.1Z"/>
-      <path d="M428.5,73.4l2.6-.8c.3,1.5,1.9,2.6,3.8,2.6s2.9-.9,2.9-1.8-.6-1.3-1.8-1.7l-3.5-1c-1.8-.6-3.3-1.6-3.3-3.5s2.4-4.1,5.5-4.1,5.1,1.5,5.8,3.5l-2.5.7c-.3-1-1.7-1.9-3.3-1.9s-2.6.8-2.6,1.6.5,1,1.5,1.3l3.4,1c2,.6,3.7,1.5,3.7,3.8s-2.4,4.4-5.8,4.4-5.8-2-6.3-4.2h-.1Z"/>
-      <path d="M443.4,59.4c0-1,.8-1.8,1.8-1.8s1.8.8,1.8,1.8-.8,1.8-1.8,1.8-1.8-.8-1.8-1.8ZM443.7,63.4h2.9v13.8h-2.9v-13.8Z"/>
-      <path d="M450.6,79.7l2.7-1c.8,1.4,2,2.1,4,2.1s4.1-1.8,4.1-4.2v-2c-1.1,1.5-2.8,2.3-4.9,2.3-4,0-6.9-3.1-6.9-7s2.9-7,6.9-7,3.8.9,4.9,2.3v-2h2.9v13.3c0,3.8-2.8,6.6-7.1,6.6s-5.4-1.5-6.6-3.6v.2ZM461.4,70c0-2.5-1.9-4.4-4.5-4.4s-4.5,1.8-4.5,4.4,1.8,4.4,4.5,4.4,4.5-1.8,4.5-4.4Z"/>
-      <path d="M468.1,63.4h2.9v2.1c.9-1.4,2.5-2.5,4.8-2.5,3.5,0,5.5,2.3,5.5,6.1v8.1h-2.9v-7.6c0-2.4-1.2-3.9-3.4-3.9s-3.9,1.8-3.9,4.6v6.9h-2.9v-13.8h0Z"/>
-      <path d="M484.1,70.3c0-4.1,2.9-7.3,7.1-7.3s7,3.1,7,7,0,.7,0,1.1h-11.2c.2,2.3,1.8,3.9,4.6,3.9s3.3-1,3.9-2.2l2.7.8c-.9,1.9-3,3.9-6.6,3.9s-7.4-2.9-7.4-7.3h0ZM491.2,65.6c-2.4,0-4.1,1.7-4.3,3.7h8.4c-.2-2.1-1.7-3.7-4.2-3.7h0Z"/>
-      <path d="M501.2,63.4h2.9v2.2c.8-1.7,2.4-2.7,4.7-2.4v2.7c-3-.4-4.7,1-4.7,5.1v6.2h-2.9v-13.8Z"/>
+      <text x="122" y="77" fontSize="14" fontFamily="system-ui">Strategic Marketing & Design</text>
     </g>
   </svg>
 )
 
-const iconMap = { Palette, Layout, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool }
+const iconMap = { Palette, Layout: LayoutIcon, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool }
 
 // PIN Entry component for edit mode authentication
 const PinEntry = ({ onSuccess }) => {
@@ -93,7 +98,8 @@ const PinEntry = ({ onSuccess }) => {
       })
 
       if (res.ok) {
-        setAuthenticated(true)
+        const data = await res.json()
+        setAuthToken(data.token)
         onSuccess()
       } else {
         setError('Invalid PIN')
@@ -110,7 +116,7 @@ const PinEntry = ({ onSuccess }) => {
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-sm border border-slate-200 w-80">
         <div className="flex items-center gap-3 mb-6">
           <Lock className="w-5 h-5 text-slate-400" />
-          <h2 className="text-lg font-medium text-slate-900">Enter PIN to Edit</h2>
+          <h2 className="text-lg font-medium text-slate-900">Enter PIN to Access</h2>
         </div>
         <input
           type="password"
@@ -159,7 +165,7 @@ const MarkdownContent = ({ content }) => {
   }
 
   const parseLine = (text) => {
-    // Bold: **text** or __text__
+    // Bold
     text = text.replace(/\*\*(.+?)\*\*/g, '<strong class="text-slate-900 font-semibold">$1</strong>')
     text = text.replace(/__(.+?)__/g, '<strong class="text-slate-900 font-semibold">$1</strong>')
     return text
@@ -168,7 +174,6 @@ const MarkdownContent = ({ content }) => {
   lines.forEach((line, i) => {
     const trimmed = line.trim()
 
-    // Empty line
     if (!trimmed) {
       flushList()
       return
@@ -191,7 +196,7 @@ const MarkdownContent = ({ content }) => {
       return
     }
 
-    // Bullet points
+    // List items
     if (trimmed.startsWith('- ') || trimmed.startsWith('* ') || trimmed.startsWith('• ')) {
       currentList.push(trimmed.slice(2))
       return
@@ -199,49 +204,17 @@ const MarkdownContent = ({ content }) => {
 
     // Regular paragraph
     flushList()
-    elements.push(<p key={i} className="text-slate-600 mb-3" dangerouslySetInnerHTML={{ __html: parseLine(trimmed) }} />)
+    elements.push(
+      <p key={i} className="text-slate-600 mb-3" dangerouslySetInnerHTML={{ __html: parseLine(trimmed) }} />
+    )
   })
 
   flushList()
   return <>{elements}</>
 }
 
-// Visual page break indicator for preview (hidden in view mode)
-const PageBreak = ({ hidden = false }) => {
-  if (hidden) return null
-  return (
-    <div className="page-break-indicator no-print relative my-8">
-      <div className="border-t-2 border-dashed border-slate-300"></div>
-      <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-slate-50 px-3 text-xs text-slate-400 uppercase tracking-wide">
-        Page Break
-      </span>
-    </div>
-  )
-}
-
-// Table of contents component
-const TableOfContents = ({ sections, showPageNumbers = true }) => (
-  <div className="mb-8 p-4 bg-slate-50 rounded-lg print:bg-transparent print:p-0 print:mb-6">
-    <h4 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">In This Proposal</h4>
-    <div className="space-y-1 text-sm">
-      {sections.map((section, i) => (
-        <div key={i} className="text-slate-600">
-          {showPageNumbers ? (
-            <span className="text-slate-400 tabular-nums inline-block w-8">p. {section.page}</span>
-          ) : (
-            <span className="hidden print:inline-block text-slate-400 tabular-nums w-8">p. {section.page}</span>
-          )}
-          <span>{section.title}</span>
-        </div>
-      ))}
-    </div>
-  </div>
-)
-
-const EditableText = ({ value, onChange, tag: Tag = 'span', className = '', readOnly = false }) => {
-  if (readOnly) {
-    return <Tag className={className}>{value}</Tag>
-  }
+// Editable text component
+const EditableText = ({ value, onChange, tag: Tag = 'span', className = '' }) => {
   return (
     <Tag
       contentEditable
@@ -254,7 +227,8 @@ const EditableText = ({ value, onChange, tag: Tag = 'span', className = '', read
   )
 }
 
-const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly = false }) => {
+// Line item row component for proposal editor
+const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional }) => {
   const lowTotal = phase.lowHrs * phase.rate
   const highTotal = phase.highHrs * phase.rate
 
@@ -269,10 +243,9 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly
                 onChange={(val) => onUpdate(index, { ...phase, name: val })}
                 tag="span"
                 className="font-medium text-slate-900"
-                readOnly={readOnly}
               />
               {phase.optional && (
-                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded print:bg-slate-100">Optional</span>
+                <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Optional</span>
               )}
             </div>
             <EditableText
@@ -280,51 +253,42 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly
               onChange={(val) => onUpdate(index, { ...phase, description: val })}
               tag="p"
               className="text-slate-500 text-sm mt-1"
-              readOnly={readOnly}
             />
           </div>
-          {!readOnly && (
-            <div className="no-print flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={() => onToggleOptional(index)}
-                className={`p-1 rounded text-xs ${phase.optional ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                title={phase.optional ? 'Mark as required' : 'Mark as optional'}
-              >
-                Opt
-              </button>
-              <button
-                onClick={() => onDelete(index)}
-                className="p-1 rounded bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-600"
-                title="Delete phase"
-              >
-                <Trash2 className="w-3 h-3" />
-              </button>
-            </div>
-          )}
+          <div className="no-print flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onToggleOptional(index)}
+              className={`p-1 rounded text-xs ${phase.optional ? 'bg-slate-200 text-slate-600' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+              title={phase.optional ? 'Mark as required' : 'Mark as optional'}
+            >
+              Opt
+            </button>
+            <button
+              onClick={() => onDelete(index)}
+              className="p-1 rounded bg-slate-100 text-slate-400 hover:bg-red-100 hover:text-red-600"
+              title="Delete phase"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       </td>
       <td className="hidden sm:table-cell py-3 px-4 text-center text-sm text-slate-600 align-top whitespace-nowrap print:table-cell">
-        {readOnly ? (
-          <>{phase.lowHrs}–{phase.highHrs}</>
-        ) : (
-          <>
-            <span
-              contentEditable
-              suppressContentEditableWarning
-              onBlur={(e) => onUpdate(index, { ...phase, lowHrs: parseFloat(e.target.innerText) || 0 })}
-            >
-              {phase.lowHrs}
-            </span>
-            –
-            <span
-              contentEditable
-              suppressContentEditableWarning
-              onBlur={(e) => onUpdate(index, { ...phase, highHrs: parseFloat(e.target.innerText) || 0 })}
-            >
-              {phase.highHrs}
-            </span>
-          </>
-        )}
+        <span
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={(e) => onUpdate(index, { ...phase, lowHrs: parseFloat(e.target.innerText) || 0 })}
+        >
+          {phase.lowHrs}
+        </span>
+        –
+        <span
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={(e) => onUpdate(index, { ...phase, highHrs: parseFloat(e.target.innerText) || 0 })}
+        >
+          {phase.highHrs}
+        </span>
       </td>
       <td className="py-3 pl-4 text-right text-sm text-slate-600 align-top whitespace-nowrap">
         ${lowTotal.toLocaleString()}–${highTotal.toLocaleString()}
@@ -333,100 +297,107 @@ const LineItem = ({ phase, index, onUpdate, onDelete, onToggleOptional, readOnly
   )
 }
 
-// Dashboard Component
-function Dashboard({ proposals, onCreate, onDelete }) {
-  return (
-    <div className="min-h-screen bg-slate-50 py-12">
-      <div className="max-w-4xl mx-auto px-6">
-        <header className="flex justify-between items-center mb-8">
-          <div>
-            <Logo />
-            <p className="text-slate-500 mt-2">Proposal Generator</p>
-          </div>
-          <button
-            onClick={onCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800"
-          >
-            <Plus className="w-4 h-4" /> New Proposal
-          </button>
-        </header>
-
-        {proposals.length === 0 ? (
-          <div className="text-center py-16 text-slate-400">
-            <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>No proposals yet. Create your first one!</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {proposals.map(p => (
-              <Link
-                key={p.id}
-                to={`/${p.id}`}
-                className="block bg-white rounded-lg border border-slate-200 p-4 hover:border-slate-300 cursor-pointer group"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium text-slate-900">{p.projectName}</h3>
-                    <p className="text-sm text-slate-500">{p.clientName}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-xs px-2 py-1 rounded ${p.status === 'sent' ? 'bg-blue-100 text-blue-700' : p.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                      {p.status}
-                    </span>
-                    <span className="text-sm text-slate-400">{p.date}</span>
-                    <button
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(p.id); }}
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 text-slate-400"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// Editor Component
-function Editor({ proposal, onSave, templates, isViewMode = false }) {
-  const [data, setData] = useState(proposal)
-
-  // Get benefits and upsells - proposal benefits override template for app projects
-  const template = templates[data.projectType] || templates['web'] || {}
-  const benefits = data.benefits || template.benefits || []
-  const upsells = data.upsells || template.upsells || []
+// Main Proposal Editor component
+function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
+  const navigate = useNavigate()
+  const [data, setData] = useState(initialProposal)
   const [copiedLink, setCopiedLink] = useState(false)
+  const [versions, setVersions] = useState([])
+  const [showVersions, setShowVersions] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loadingVersions, setLoadingVersions] = useState(false)
+  const [showVersionModal, setShowVersionModal] = useState(false)
+  const [confirmModal, setConfirmModal] = useState(null) // {title, message, onConfirm, danger, confirmText}
 
-  // Set document title for PDF filename
   useEffect(() => {
-    const toHyphenated = (str) => str?.replace(/\s+/g, '-') || ''
-    // Extract last name (first word before any comma or last word)
-    const getLastName = (name) => {
-      if (!name) return ''
-      const commaIndex = name.indexOf(',')
-      if (commaIndex > 0) return name.slice(0, commaIndex).split(' ').pop()
-      return name.split(' ').pop()
+    if (data?.id && !isViewMode) {
+      loadVersions()
     }
-    const parts = [data.projectName, getLastName(data.clientName)].filter(Boolean).map(toHyphenated)
-    document.title = parts.length ? 'proposal_' + parts.join('_') : 'Proposal'
-    return () => { document.title = 'Estimate Generator' }
-  }, [data.projectName, data.clientName])
+  }, [data?.id, isViewMode])
 
-  // Auto-save on changes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (data !== proposal) {
-        setSaving(true)
-        onSave(data).then(() => setSaving(false))
+  const loadVersions = async () => {
+    setLoadingVersions(true)
+    try {
+      const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions`)
+      if (res.ok) {
+        const versionsData = await res.json()
+        setVersions(versionsData)
       }
-    }, 1000)
+    } catch (err) {
+      console.error('Failed to load versions:', err)
+    }
+    setLoadingVersions(false)
+  }
+
+  const saveVersion = async (name) => {
+    const versionName = name || `Version ${versions.length + 1}`
+    setSaving(true)
+    try {
+      const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions`, {
+        method: 'POST',
+        body: JSON.stringify({ versionName })
+      })
+      if (res.ok) {
+        await loadVersions()
+        setShowVersionModal(false)
+      }
+    } catch (err) {
+      console.error('Failed to save version:', err)
+    }
+    setSaving(false)
+  }
+
+  const restoreVersion = (filename) => {
+    setConfirmModal({
+      title: 'Restore Version',
+      message: 'Restore this version? Current changes will be overwritten.',
+      confirmText: 'Restore',
+      danger: false,
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions/${filename}/restore`, {
+            method: 'POST'
+          })
+          if (res.ok) {
+            const restored = await res.json()
+            setData(restored)
+          }
+        } catch (err) {
+          console.error('Failed to restore version:', err)
+        }
+        setShowVersions(false)
+      }
+    })
+  }
+
+  const deleteVersion = (filename, e) => {
+    e.stopPropagation()
+    setConfirmModal({
+      title: 'Delete Version',
+      message: 'Delete this version? This cannot be undone.',
+      confirmText: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        try {
+          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions/${filename}`, {
+            method: 'DELETE'
+          })
+          if (res.ok) {
+            await loadVersions()
+          }
+        } catch (err) {
+          console.error('Failed to delete version:', err)
+        }
+      }
+    })
+  }
+
+  // Auto-save debounce
+  useEffect(() => {
+    if (isViewMode || !data || !onSave) return
+    const timer = setTimeout(() => onSave(data), 500)
     return () => clearTimeout(timer)
-  }, [data])
+  }, [data, onSave, isViewMode])
 
   const updateField = useCallback((field, value) => {
     setData(prev => ({ ...prev, [field]: value }))
@@ -442,7 +413,14 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
   const addPhase = useCallback(() => {
     setData(prev => ({
       ...prev,
-      phases: [...prev.phases, { name: 'New Phase', description: 'Description of this phase.', lowHrs: 10, highHrs: 15, rate: 120, optional: false }]
+      phases: [...prev.phases, {
+        name: 'New Phase',
+        description: 'Description of this phase.',
+        lowHrs: 10,
+        highHrs: 15,
+        rate: 120,
+        optional: false
+      }]
     }))
   }, [])
 
@@ -456,7 +434,9 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
   const toggleOptional = useCallback((index) => {
     setData(prev => ({
       ...prev,
-      phases: prev.phases.map((p, i) => i === index ? { ...p, optional: !p.optional } : p)
+      phases: prev.phases.map((p, i) =>
+        i === index ? { ...p, optional: !p.optional } : p
+      )
     }))
   }, [])
 
@@ -468,8 +448,14 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
-  const requiredPhases = data.phases.filter(p => !p.optional)
-  const optionalPhases = data.phases.filter(p => p.optional)
+  if (!data) return null
+
+  const template = templates[data.projectType] || templates['web'] || {}
+  const benefits = data.benefits || template.benefits || []
+  const upsells = data.upsells || template.upsells || []
+
+  const requiredPhases = data.phases?.filter(p => !p.optional) || []
+  const optionalPhases = data.phases?.filter(p => p.optional) || []
 
   const subtotal = requiredPhases.reduce(
     (acc, phase) => ({
@@ -489,49 +475,100 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 print:bg-white print:py-0">
-      {/* Toolbar - different for view mode vs edit mode */}
-      {isViewMode ? (
-        <div className="no-print fixed top-4 right-4 z-50">
+    <div className="min-h-screen bg-slate-50 py-6 print:bg-white print:py-0">
+      {/* Toolbar - not shown in view mode */}
+      {!isViewMode && (
+        <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
+          {/* Version History */}
+          <div className="relative">
+            <button
+              onClick={() => setShowVersions(!showVersions)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50 shadow-sm"
+            >
+              <History className="w-4 h-4" />
+              History
+              <ChevronDown className={`w-3 h-3 transition-transform ${showVersions ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showVersions && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-slate-200 rounded-lg shadow-lg z-50 max-h-96 overflow-auto">
+                <div className="p-2 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">Versions</span>
+                  <button
+                    onClick={() => setShowVersionModal(true)}
+                    className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded hover:bg-slate-200"
+                  >
+                    + Save New
+                  </button>
+                </div>
+                {loadingVersions ? (
+                  <p className="p-3 text-sm text-slate-400">Loading...</p>
+                ) : versions.length === 0 ? (
+                  <p className="p-3 text-sm text-slate-400">No versions saved</p>
+                ) : (
+                  versions.map(v => (
+                    <div
+                      key={v.filename}
+                      className="w-full px-3 py-2 hover:bg-slate-50 flex items-center gap-2 group"
+                    >
+                      <button
+                        onClick={() => restoreVersion(v.filename)}
+                        className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                        title="Restore this version"
+                      >
+                        <RotateCcw className="w-3 h-3 text-slate-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-slate-700 truncate">{v.versionName || v.filename}</p>
+                          <p className="text-xs text-slate-400">
+                            {v.createdAt ? new Date(v.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : (v.date || 'Unknown date')}
+                          </p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={(e) => deleteVersion(v.filename, e)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 text-slate-400 transition-opacity"
+                        title="Delete this version"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleCopyLink}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50 shadow-sm"
+          >
+            {copiedLink ? <Check className="w-4 h-4 text-green-600" /> : <LinkIcon className="w-4 h-4" />}
+            {copiedLink ? 'Copied!' : 'Copy link'}
+          </button>
           <button
             onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800 shadow-lg"
+            className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded text-sm hover:bg-slate-800 shadow-sm"
           >
-            <Download className="w-4 h-4" />
-            Download PDF
+            <Printer className="w-4 h-4" />
+            Print
           </button>
         </div>
-      ) : (
-        <>
-          <div className="no-print fixed top-4 left-4 z-50">
-            <Link
-              to="/"
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
-            >
-              <ArrowLeft className="w-4 h-4" /> Dashboard
-            </Link>
-          </div>
-          <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
-            {saving && <span className="text-xs text-slate-400">Saving...</span>}
-            <button
-              onClick={handleCopyLink}
-              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-600 hover:bg-slate-50"
-            >
-              {copiedLink ? <Check className="w-4 h-4 text-green-600" /> : <LinkIcon className="w-4 h-4" />}
-              {copiedLink ? 'Copied!' : 'Copy link'}
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded text-sm hover:bg-slate-800"
-            >
-              <Printer className="w-4 h-4" />
-              Print
-            </button>
-          </div>
-        </>
       )}
 
-      {/* Internal Notes (no-print, edit mode only) */}
+      {/* Back button - only in edit mode */}
+      {!isViewMode && (
+        <div className="no-print max-w-[8.5in] mx-auto mb-4 px-4">
+          <Link
+            to="/proposals"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Proposals
+          </Link>
+        </div>
+      )}
+
+      {/* Internal Notes - only in edit mode */}
       {!isViewMode && (
         <div className="no-print max-w-[8.5in] mx-auto mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start justify-between">
@@ -543,11 +580,6 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
                 </span>
               )}
             </div>
-            {data.archivePath && (
-              <span className="text-xs text-amber-600 font-mono">
-                Save PDF to: {data.archivePath}/proposal.pdf
-              </span>
-            )}
           </div>
           <textarea
             value={data.internalNotes || ''}
@@ -565,35 +597,33 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
         <header className="flex flex-col items-start sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-12">
           <Logo />
           <div className="text-left sm:text-right text-sm text-slate-500">
-            <p>
-              <a href={`mailto:${data.contactInfo.email}`} className="hover:text-slate-700 print:no-underline">
-                {data.contactInfo.email}
-              </a>
-            </p>
-            <p>
-              <a href={`tel:${data.contactInfo.phone.replace(/[^0-9+]/g, '')}`} className="hover:text-slate-700 print:no-underline">
-                {data.contactInfo.phone}
-              </a>
-            </p>
+            <p>{data.contactInfo?.email || 'adrial@adrialdesigns.com'}</p>
+            <p>{data.contactInfo?.phone || '(919) 968-8818'}</p>
           </div>
         </header>
 
         {/* Title Block */}
         <div className="mb-10">
-          <EditableText
-            value={data.projectName}
-            onChange={(val) => updateField('projectName', val)}
-            tag="h1"
-            className="text-3xl font-semibold text-slate-900 tracking-tight"
-            readOnly={isViewMode}
-          />
-          <div className="flex gap-4 mt-2 text-sm text-slate-400">
+          {isViewMode ? (
+            <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">{data.projectName}</h1>
+          ) : (
             <EditableText
-              value={data.date}
-              onChange={(val) => updateField('date', val)}
-              tag="span"
-              readOnly={isViewMode}
+              value={data.projectName}
+              onChange={(val) => updateField('projectName', val)}
+              tag="h1"
+              className="text-3xl font-semibold text-slate-900 tracking-tight"
             />
+          )}
+          <div className="flex gap-4 mt-2 text-sm text-slate-400">
+            {isViewMode ? (
+              <span>{data.date}</span>
+            ) : (
+              <EditableText
+                value={data.date}
+                onChange={(val) => updateField('date', val)}
+                tag="span"
+              />
+            )}
             {data.expirationDate && (
               <span className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
@@ -601,105 +631,83 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
             )}
           </div>
 
-          {/* Proposal For - Client Details */}
+          {/* Client Details */}
           <div className="mt-6">
             <p className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-2">Proposal For</p>
-            <EditableText
-              value={data.clientName}
-              onChange={(val) => updateField('clientName', val)}
-              tag="p"
-              className="text-lg text-slate-900"
-              readOnly={isViewMode}
-            />
-            {data.clientRole && (
-              <EditableText
-                value={data.clientRole}
-                onChange={(val) => updateField('clientRole', val)}
-                tag="p"
-                className="text-slate-600"
-                readOnly={isViewMode}
-              />
-            )}
-            {data.clientEmail && (
-              <EditableText
-                value={data.clientEmail}
-                onChange={(val) => updateField('clientEmail', val)}
-                tag="p"
-                className="text-slate-500 text-sm"
-                readOnly={isViewMode}
-              />
-            )}
-            {data.clientCompany && (
-              <EditableText
-                value={data.clientCompany}
-                onChange={(val) => updateField('clientCompany', val)}
-                tag="p"
-                className="text-slate-500 text-sm mt-1"
-                readOnly={isViewMode}
-              />
+            {isViewMode ? (
+              <>
+                <p className="text-lg text-slate-900">{data.clientName}</p>
+                {data.clientRole && <p className="text-slate-600">{data.clientRole}</p>}
+                {data.clientCompany && <p className="text-slate-500 text-sm mt-1">{data.clientCompany}</p>}
+              </>
+            ) : (
+              <>
+                <EditableText
+                  value={data.clientName}
+                  onChange={(val) => updateField('clientName', val)}
+                  tag="p"
+                  className="text-lg text-slate-900"
+                />
+                {data.clientRole && (
+                  <EditableText
+                    value={data.clientRole}
+                    onChange={(val) => updateField('clientRole', val)}
+                    tag="p"
+                    className="text-slate-600"
+                  />
+                )}
+                {data.clientCompany && (
+                  <EditableText
+                    value={data.clientCompany}
+                    onChange={(val) => updateField('clientCompany', val)}
+                    tag="p"
+                    className="text-slate-500 text-sm mt-1"
+                  />
+                )}
+              </>
             )}
           </div>
         </div>
 
-        {/* Overview - above ToC as part of cover page */}
+        {/* Overview */}
         <div className="mb-8 w-full md:w-[60%] print:w-[60%]">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Overview</h3>
-          <EditableText
-            value={data.projectDescription}
-            onChange={(val) => updateField('projectDescription', val)}
-            tag="p"
-            className="text-slate-600 leading-relaxed"
-            readOnly={isViewMode}
-          />
+          {isViewMode ? (
+            <p className="text-slate-600 leading-relaxed">{data.projectDescription}</p>
+          ) : (
+            <EditableText
+              value={data.projectDescription}
+              onChange={(val) => updateField('projectDescription', val)}
+              tag="p"
+              className="text-slate-600 leading-relaxed"
+            />
+          )}
         </div>
 
-        {/* Table of Contents */}
-        <TableOfContents
-          showPageNumbers={!isViewMode}
-          sections={(() => {
-            const sections = [
-              { title: "What's Included", page: 2 },
-              { title: 'Estimate', page: 3 },
-              { title: 'Timeline & Also Available', page: 4 },
-            ]
-            let nextPage = 5
-            if ((template.designIncludes && !data.hideDesignIncludes) || (data.monthlyFee > 0 && template.hostingIncludes)) {
-              sections.push({ title: 'Design & Hosting Includes', page: nextPage++ })
-            }
-            if (data.projectSpecifics) {
-              sections.push({ title: 'Project Specifics', page: nextPage++ })
-            }
-            if (data.exclusions) {
-              sections.push({ title: 'What Is Not Included', page: nextPage })
-            }
-            return sections
-          })()}
-        />
-
-        {/* Benefits Grid - Page 2 */}
-        <PageBreak hidden={isViewMode} />
-        <div className="mb-12 break-before-page">
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">What's Included</h3>
-          <p className="text-sm text-slate-400 mb-4">Here's what you'll get with this project.</p>
-          <div className="benefits-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
-            {benefits.map((benefit, i) => {
-              const Icon = iconMap[benefit.icon]
-              return (
-                <div key={i} className="flex gap-3">
-                  {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
-                  <div>
-                    <div className="font-medium text-slate-900">{benefit.title}</div>
-                    <div className="text-slate-500 text-sm">{benefit.description}</div>
+        {/* Benefits Grid */}
+        {benefits.length > 0 && (
+          <div className="mb-12">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">What's Included</h3>
+            <p className="text-sm text-slate-400 mb-4">Here's what you'll get with this project.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
+              {benefits.map((benefit, i) => {
+                const Icon = iconMap[benefit.icon]
+                return (
+                  <div key={i} className="flex gap-3">
+                    {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
+                    <div>
+                      <div className="font-medium text-slate-900">{benefit.title}</div>
+                      <div className="text-slate-500 text-sm">{benefit.description}</div>
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Estimate - Page 2 */}
-        <PageBreak hidden={isViewMode} />
-        <div className="mb-12 break-before-page">
+        {/* Estimate */}
+        <div className="mb-12">
           <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Estimate</h3>
           <table className="w-full">
             <thead>
@@ -710,33 +718,66 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {data.phases.map((phase, i) => (
-                <LineItem key={i} phase={phase} index={i} onUpdate={updatePhase} onDelete={deletePhase} onToggleOptional={toggleOptional} readOnly={isViewMode} />
-              ))}
+              {isViewMode ? (
+                // View mode - read only
+                data.phases?.map((phase, i) => {
+                  const lowTotal = phase.lowHrs * phase.rate
+                  const highTotal = phase.highHrs * phase.rate
+                  return (
+                    <tr key={i} className={phase.optional ? 'opacity-60' : ''}>
+                      <td className="py-3 pr-6 align-top">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-slate-900">{phase.name}</span>
+                          {phase.optional && <span className="text-xs bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">Optional</span>}
+                        </div>
+                        <p className="text-slate-500 text-sm mt-1">{phase.description}</p>
+                      </td>
+                      <td className="hidden sm:table-cell py-3 px-4 text-center text-sm text-slate-600 align-top whitespace-nowrap print:table-cell">
+                        {phase.lowHrs}–{phase.highHrs}
+                      </td>
+                      <td className="py-3 pl-4 text-right text-sm text-slate-600 align-top whitespace-nowrap">
+                        ${lowTotal.toLocaleString()}–${highTotal.toLocaleString()}
+                      </td>
+                    </tr>
+                  )
+                })
+              ) : (
+                // Edit mode - editable
+                data.phases?.map((phase, i) => (
+                  <LineItem
+                    key={i}
+                    phase={phase}
+                    index={i}
+                    onUpdate={updatePhase}
+                    onDelete={deletePhase}
+                    onToggleOptional={toggleOptional}
+                  />
+                ))
+              )}
             </tbody>
           </table>
 
-          {/* Totals Section - stays together */}
-          <div className="estimate-totals border-t border-slate-300 mt-0">
+          {/* Totals */}
+          <div className="border-t border-slate-300 mt-0">
             <table className="w-full">
               <tbody>
                 {discount > 0 && (
-                  <tr>
-                    <td className="py-2 text-sm text-slate-500">Subtotal</td>
-                    <td className="hidden sm:table-cell w-24 print:table-cell"></td>
-                    <td className="py-2 text-right text-sm text-slate-500 whitespace-nowrap w-28 sm:w-44">
-                      ${subtotal.lowTotal.toLocaleString()}–${subtotal.highTotal.toLocaleString()}
-                    </td>
-                  </tr>
-                )}
-                {discount > 0 && (
-                  <tr>
-                    <td className="py-2 text-sm text-green-600">Discount ({discount}%)</td>
-                    <td className="hidden sm:table-cell print:table-cell"></td>
-                    <td className="py-2 text-right text-sm text-green-600 whitespace-nowrap">
-                      -${(subtotal.lowTotal * discount / 100).toLocaleString()}–${(subtotal.highTotal * discount / 100).toLocaleString()}
-                    </td>
-                  </tr>
+                  <>
+                    <tr>
+                      <td className="py-2 text-sm text-slate-500">Subtotal</td>
+                      <td className="hidden sm:table-cell w-24 print:table-cell"></td>
+                      <td className="py-2 text-right text-sm text-slate-500 whitespace-nowrap w-28 sm:w-44">
+                        ${subtotal.lowTotal.toLocaleString()}–${subtotal.highTotal.toLocaleString()}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 text-sm text-green-600">Discount ({discount}%)</td>
+                      <td className="hidden sm:table-cell print:table-cell"></td>
+                      <td className="py-2 text-right text-sm text-green-600 whitespace-nowrap">
+                        -${(subtotal.lowTotal * discount / 100).toLocaleString()}–${(subtotal.highTotal * discount / 100).toLocaleString()}
+                      </td>
+                    </tr>
+                  </>
                 )}
                 <tr>
                   <td className="py-4 font-medium text-slate-900">Total</td>
@@ -762,7 +803,7 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
 
           <div className="flex justify-between items-start mt-4">
             <div className="text-sm text-slate-400">
-              <p>Rate: ${data.phases[0]?.rate}/hr</p>
+              <p>Rate: ${data.phases?.[0]?.rate || 120}/hr</p>
             </div>
             {!isViewMode && (
               <button
@@ -775,101 +816,52 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
           </div>
         </div>
 
-        {/* Timeline + Upsells - grouped together */}
-        <div className="mb-12 upsells-section">
-          {/* Timeline */}
-          <div className="mb-8">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Estimated Timeline</h3>
+        {/* Timeline */}
+        <div className="mb-8">
+          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-3">Estimated Timeline</h3>
+          {isViewMode ? (
+            <p className="text-slate-600">{data.estimatedTimeline || 'Timeline to be determined based on project start date.'}</p>
+          ) : (
             <EditableText
               value={data.estimatedTimeline || 'Timeline to be determined based on project start date.'}
               onChange={(val) => updateField('estimatedTimeline', val)}
               tag="p"
               className="text-slate-600"
-              readOnly={isViewMode}
             />
-          </div>
-
-          {/* Upsells */}
-          <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">Also Available</h3>
-          <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
-            {upsells.map((upsell, i) => {
-              const Icon = iconMap[upsell.icon]
-              return (
-                <div key={i} className="border border-slate-200 rounded-lg p-4">
-                  {Icon && <Icon className="w-5 h-5 text-[#d72027] mb-2" strokeWidth={1.5} />}
-                  <div className="font-medium text-slate-900 mb-1">{upsell.title}</div>
-                  <div className="text-slate-500 text-sm">{upsell.description}</div>
-                </div>
-              )
-            })}
-          </div>
+          )}
         </div>
 
-        {/* Website/Hosting Includes - conditional on having a monthly fee */}
-        {((template.designIncludes && !data.hideDesignIncludes) || (data.monthlyFee > 0 && template.hostingIncludes)) && (
-          <>
-          <PageBreak hidden={isViewMode} />
-          <div className="mb-12 break-before-page">
-            {/* Design Includes */}
-            {template.designIncludes && !data.hideDesignIncludes && (
-              <div className="mb-8">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Your Website Design Includes</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
-                  {template.designIncludes.map((item, i) => {
-                    const Icon = iconMap[item.icon]
-                    return (
-                      <div key={i} className="flex gap-3">
-                        {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
-                        <div>
-                          <div className="font-medium text-slate-900">{item.title}</div>
-                          <div className="text-slate-500 text-sm">{item.description}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Hosting Includes */}
-            {data.monthlyFee > 0 && template.hostingIncludes && (
-              <div className="mb-8">
-                <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Included in Your ${data.monthlyFee}/Month Hosting Fee</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:grid-cols-2">
-                  {template.hostingIncludes.map((item, i) => {
-                    const Icon = iconMap[item.icon]
-                    return (
-                      <div key={i} className="flex gap-3">
-                        {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
-                        <div>
-                          <div className="font-medium text-slate-900">{item.title}</div>
-                          <div className="text-slate-500 text-sm">{item.description}</div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+        {/* Upsells */}
+        {upsells.length > 0 && (
+          <div className="mb-12">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-1">Also Available</h3>
+            <p className="text-sm text-slate-400 mb-4">These services are not included in this estimate but can be added upon request.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
+              {upsells.map((upsell, i) => {
+                const Icon = iconMap[upsell.icon]
+                return (
+                  <div key={i} className="border border-slate-200 rounded-lg p-4">
+                    {Icon && <Icon className="w-5 h-5 text-[#d72027] mb-2" strokeWidth={1.5} />}
+                    <div className="font-medium text-slate-900 mb-1">{upsell.title}</div>
+                    <div className="text-slate-500 text-sm">{upsell.description}</div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-          </>
         )}
 
-        {/* Project Specifics - detailed feature breakdown */}
+        {/* Project Specifics */}
         {data.projectSpecifics && (
-          <>
-          <PageBreak hidden={isViewMode} />
-          <div className="mb-12 break-before-page">
+          <div className="mb-12">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Project Specifics</h3>
-            <div className="prose prose-slate prose-sm max-w-none project-specifics">
+            <div className="prose prose-slate prose-sm max-w-none">
               <MarkdownContent content={data.projectSpecifics} />
             </div>
           </div>
-          </>
         )}
 
-        {/* Exclusions - what's not included */}
+        {/* Exclusions */}
         {data.exclusions && (
           <div className="mb-12">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">What Is Not Included</h3>
@@ -881,105 +873,43 @@ function Editor({ proposal, onSave, templates, isViewMode = false }) {
 
         {/* Footer */}
         <footer className="pt-12 border-t border-slate-100 text-sm text-slate-400">
-          {data.contactInfo.website}
+          {data.contactInfo?.website || 'www.adrialdesigns.com'}
         </footer>
       </div>
 
-      {/* Instructions (edit mode only) */}
+      {/* Instructions */}
       {!isViewMode && (
         <p className="no-print text-center text-sm text-slate-400 mt-8">
           Click any text to edit · Auto-saves every second
         </p>
       )}
+
+      {/* Version Save Modal */}
+      <VersionModal
+        isOpen={showVersionModal}
+        onClose={() => setShowVersionModal(false)}
+        onSave={saveVersion}
+        saving={saving}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!confirmModal}
+        onClose={() => setConfirmModal(null)}
+        onConfirm={() => {
+          confirmModal?.onConfirm()
+          setConfirmModal(null)
+        }}
+        title={confirmModal?.title || 'Confirm'}
+        message={confirmModal?.message || 'Are you sure?'}
+        confirmText={confirmModal?.confirmText || 'Confirm'}
+        danger={confirmModal?.danger || false}
+      />
     </div>
   )
 }
 
-// Dashboard Page
-function DashboardPage() {
-  const [proposals, setProposals] = useState([])
-  const [templates, setTemplates] = useState({})
-  const [loading, setLoading] = useState(true)
-  const [needsAuth, setNeedsAuth] = useState(!isAuthenticated())
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (needsAuth) return
-    Promise.all([
-      fetch(`${API_BASE}/proposals`).then(r => r.json()),
-      fetch(`${API_BASE}/templates`).then(r => r.json())
-    ])
-      .then(([proposalsData, templatesData]) => {
-        setProposals(proposalsData)
-        const templatesMap = {}
-        templatesData.forEach(t => { templatesMap[t.type] = t })
-        setTemplates(templatesMap)
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('Failed to load data:', err)
-        setLoading(false)
-      })
-  }, [])
-
-  const createProposal = async () => {
-    const newProposal = {
-      clientName: 'New Client',
-      clientCompany: '',
-      projectName: 'New Project',
-      projectType: 'web',
-      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-      expirationDate: '',
-      projectDescription: 'Project description goes here.',
-      internalNotes: '',
-      phases: [
-        { name: 'Discovery & Planning', description: 'Initial research and project scoping.', lowHrs: 8, highHrs: 12, rate: 120, optional: false },
-        { name: 'Design & Development', description: 'Building the core functionality.', lowHrs: 40, highHrs: 60, rate: 120, optional: false }
-      ],
-      discountPercent: 0,
-      monthlyFee: 39,
-      paymentTerms: { depositPercent: 50, schedule: '' },
-      contactInfo: {
-        name: 'Adrial Dale',
-        phone: '(919) 968-8818',
-        email: 'adrial@adrialdesigns.com',
-        website: 'www.adrialdesigns.com'
-      }
-    }
-
-    const res = await fetch(`${API_BASE}/proposals`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newProposal)
-    })
-    const saved = await res.json()
-    navigate(`/${saved.id}`)
-  }
-
-  const deleteProposal = async (id) => {
-    if (confirm('Delete this proposal?')) {
-      await fetch(`${API_BASE}/proposals/${id}`, { method: 'DELETE' })
-      setProposals(proposals.filter(p => p.id !== id))
-    }
-  }
-
-  // Show PIN entry if not authenticated
-  if (needsAuth) {
-    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-slate-400">Loading...</p>
-      </div>
-    )
-  }
-
-  return <Dashboard proposals={proposals} onCreate={createProposal} onDelete={deleteProposal} />
-}
-
-// Editor Page (loads proposal from URL)
+// Editor Page (loads proposal from URL - standalone, no layout)
 function EditorPage() {
   const { id } = useParams()
   const [searchParams] = useSearchParams()
@@ -1006,9 +936,13 @@ function EditorPage() {
   }, [isViewMode])
 
   useEffect(() => {
+    // For public view mode, add ?view=1 to bypass auth on server
+    const viewParam = isViewMode ? '?view=1' : ''
+    const fetchFn = isViewMode ? fetch : authFetch
+
     Promise.all([
-      fetch(`${API_BASE}/proposals/${id}`).then(r => r.json()),
-      fetch(`${API_BASE}/templates`).then(r => r.json())
+      fetchFn(`${API_BASE}/proposals/${id}${viewParam}`).then(r => r.json()),
+      fetchFn(`${API_BASE}/templates${viewParam}`).then(r => r.json())
     ])
       .then(([proposalData, templatesData]) => {
         setProposal(proposalData)
@@ -1021,14 +955,13 @@ function EditorPage() {
         console.error('Failed to load proposal:', err)
         setLoading(false)
       })
-  }, [id])
+  }, [id, isViewMode])
 
   const saveProposal = async (updatedProposal) => {
     // Don't save in view mode or if not authenticated
     if (isViewMode || !isAuthenticated()) return
-    await fetch(`${API_BASE}/proposals/${updatedProposal.id}`, {
+    await authFetch(`${API_BASE}/proposals/${updatedProposal.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updatedProposal)
     })
   }
@@ -1057,17 +990,80 @@ function EditorPage() {
   return <Editor proposal={proposal} onSave={saveProposal} templates={templates} isViewMode={isViewMode} />
 }
 
-// Import OS Beta app
-import OsApp from './os-beta/OsApp'
+// Protected Layout wrapper - requires PIN authentication
+function ProtectedLayout() {
+  const [needsAuth, setNeedsAuth] = useState(!isAuthenticated())
+
+  if (needsAuth) {
+    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
+  }
+
+  return <Layout />
+}
+
+// Backwards compatibility redirects for old OS-Beta URLs
+function OsBetaRedirect() {
+  const location = useLocation()
+  const path = location.pathname.replace('/dashboard/os-beta', '') || '/'
+
+  // Map old paths to new paths
+  const pathMapping = {
+    '': '/',
+    '/': '/',
+    '/proposals': '/proposals',
+    '/projects': '/projects',
+    '/hosting': '/hosting',
+    '/time': '/time',
+    '/invoices': '/invoices',
+    '/schedule': '/schedule',
+    '/timeline': '/timeline',
+    '/feedback': '/feedback',
+    '/search': '/search',
+  }
+
+  // Check for exact matches first
+  if (pathMapping[path]) {
+    return <Navigate to={pathMapping[path] + location.search} replace />
+  }
+
+  // Handle dynamic routes
+  if (path.startsWith('/projects/')) {
+    return <Navigate to={path + location.search} replace />
+  }
+  if (path.startsWith('/proposals/')) {
+    return <Navigate to={path + location.search} replace />
+  }
+
+  // Default redirect to dashboard
+  return <Navigate to="/" replace />
+}
 
 // Main App with Router
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/dashboard/os-beta/*" element={<OsApp />} />
+        {/* Public proposal view - no auth required */}
         <Route path="/:id" element={<EditorPage />} />
+
+        {/* Backwards compatibility redirects for old OS-Beta URLs */}
+        <Route path="/dashboard/os-beta/*" element={<OsBetaRedirect />} />
+
+        {/* Protected routes with unified layout */}
+        <Route element={<ProtectedLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/proposals" element={<ProposalsPage />} />
+          <Route path="/proposals/:id" element={<EditorPage />} />
+          <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:id" element={<ProjectDetailsPage />} />
+          <Route path="/hosting" element={<HostingPage />} />
+          <Route path="/time" element={<TimePage />} />
+          <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/timeline" element={<MasterTimelinePage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/search" element={<SearchPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   )
