@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Plus, Copy, Trash2, CheckCircle, MessageSquare, Loader2, Image, X } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -49,7 +50,7 @@ export default function FeedbackPage() {
 
   const loadFeedback = async () => {
     try {
-      const res = await fetch(`${API_BASE}/feedback`)
+      const res = await authFetch(`${API_BASE}/feedback`)
       const data = await res.json()
       setItems(data)
     } catch (err) {
@@ -64,9 +65,8 @@ export default function FeedbackPage() {
 
     setSubmitting(true)
     try {
-      const res = await fetch(`${API_BASE}/feedback`, {
+      const res = await authFetch(`${API_BASE}/feedback`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: input.trim() || '(screenshot)',
           image: image
@@ -84,7 +84,7 @@ export default function FeedbackPage() {
 
   const handleDelete = async (id) => {
     try {
-      await fetch(`${API_BASE}/feedback/${id}`, { method: 'DELETE' })
+      await authFetch(`${API_BASE}/feedback/${id}`, { method: 'DELETE' })
       setItems(prev => prev.filter(item => item.id !== id))
     } catch (err) {
       console.error('Failed to delete feedback:', err)
@@ -94,7 +94,7 @@ export default function FeedbackPage() {
 
   const handleDeleteAll = async () => {
     try {
-      await fetch(`${API_BASE}/feedback`, { method: 'DELETE' })
+      await authFetch(`${API_BASE}/feedback`, { method: 'DELETE' })
       setItems([])
     } catch (err) {
       console.error('Failed to delete all feedback:', err)

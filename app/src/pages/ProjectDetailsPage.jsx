@@ -6,6 +6,7 @@ import {
   LayoutList, GanttChart, Share2, Copy, Check
 } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -60,9 +61,8 @@ function ChunkCard({ chunk, onUpdate, onDelete, isHighlighted }) {
 
   const handleSave = async () => {
     try {
-      await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+      await authFetch(`${API_BASE}/chunks/${chunk.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editData)
       })
       onUpdate({ ...chunk, ...editData })
@@ -74,9 +74,8 @@ function ChunkCard({ chunk, onUpdate, onDelete, isHighlighted }) {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      const res = await fetch(`${API_BASE}/chunks/${chunk.id}`, {
+      const res = await authFetch(`${API_BASE}/chunks/${chunk.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       })
       const updated = await res.json()
@@ -219,9 +218,8 @@ function AddChunkForm({ projectId, phaseName, onAdd, onCancel }) {
     if (!data.name.trim()) return
 
     try {
-      const res = await fetch(`${API_BASE}/chunks`, {
+      const res = await authFetch(`${API_BASE}/chunks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
           project_id: projectId
@@ -628,8 +626,8 @@ export default function ProjectDetailsPage() {
     setLoading(true)
     try {
       const [projectRes, chunksRes] = await Promise.all([
-        fetch(`${API_BASE}/projects/${id}`),
-        fetch(`${API_BASE}/chunks?project_id=${id}`)
+        authFetch(`${API_BASE}/projects/${id}`),
+        authFetch(`${API_BASE}/chunks?project_id=${id}`)
       ])
       const projectData = await projectRes.json()
       const chunksData = await chunksRes.json()
@@ -653,7 +651,7 @@ export default function ProjectDetailsPage() {
       danger: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/chunks/${chunkId}`, { method: 'DELETE' })
+          await authFetch(`${API_BASE}/chunks/${chunkId}`, { method: 'DELETE' })
           setChunks(prev => prev.filter(c => c.id !== chunkId))
         } catch (err) {
           console.error('Failed to delete chunk:', err)
@@ -682,9 +680,8 @@ export default function ProjectDetailsPage() {
       danger: false,
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_BASE}/projects/${id}`, {
+          const res = await authFetch(`${API_BASE}/projects/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: newStatus })
           })
           if (!res.ok) {
@@ -717,7 +714,7 @@ export default function ProjectDetailsPage() {
       danger: true,
       onConfirm: async () => {
         try {
-          await fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' })
+          await authFetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' })
           setShowMenu(false)
           navigate('/projects')
         } catch (err) {

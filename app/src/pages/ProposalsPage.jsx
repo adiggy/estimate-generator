@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { FileText, Trash2, ArrowRight, ExternalLink, Copy, Check, FolderPlus } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -136,8 +137,8 @@ export default function ProposalsPage() {
     setLoading(true)
     try {
       const [proposalsRes, projectsRes] = await Promise.all([
-        fetch(`${API_BASE}/proposals`),
-        fetch(`${API_BASE}/projects`)
+        authFetch(`${API_BASE}/proposals`),
+        authFetch(`${API_BASE}/projects`)
       ])
       const proposalsData = await proposalsRes.json()
       const projectsData = await projectsRes.json()
@@ -157,7 +158,7 @@ export default function ProposalsPage() {
   const handleDelete = async () => {
     if (!deleteConfirm) return
     try {
-      await fetch(`${API_BASE}/proposals/${deleteConfirm.id}`, { method: 'DELETE' })
+      await authFetch(`${API_BASE}/proposals/${deleteConfirm.id}`, { method: 'DELETE' })
       setProposals(prev => prev.filter(p => p.id !== deleteConfirm.id))
     } catch (err) {
       console.error('Failed to delete:', err)
@@ -168,7 +169,7 @@ export default function ProposalsPage() {
     if (converting) return
     setConverting(true)
     try {
-      const res = await fetch(`${API_BASE}/proposals/${proposal.id}/convert`, {
+      const res = await authFetch(`${API_BASE}/proposals/${proposal.id}/convert`, {
         method: 'POST'
       })
       if (res.ok) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { GanttChart, ChevronRight, Calendar, Clock, CheckCircle, List, LayoutGrid } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -269,8 +270,8 @@ export default function MasterTimelinePage() {
     setLoading(true)
     try {
       const [projectsRes, chunksRes] = await Promise.all([
-        fetch(`${API_BASE}/projects?status=active`),
-        fetch(`${API_BASE}/schedule/draft/chunks`)
+        authFetch(`${API_BASE}/projects?status=active`),
+        authFetch(`${API_BASE}/schedule/draft/chunks`)
       ])
       const projectsData = await projectsRes.json()
       const chunksData = await chunksRes.json()

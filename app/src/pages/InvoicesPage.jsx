@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, FileText, Send, CheckCircle, XCircle, ExternalLink, Server, FolderKanban, ChevronDown, ChevronUp, Edit2, Check, X, Trash2, Calendar } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -146,9 +147,8 @@ function InvoiceRow({ invoice, onUpdate, onDelete }) {
 
   const handleStatusChange = async (newStatus) => {
     try {
-      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+      const res = await authFetch(`${API_BASE}/invoices/${invoice.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       })
       const updated = await res.json()
@@ -161,9 +161,8 @@ function InvoiceRow({ invoice, onUpdate, onDelete }) {
   const handleHostingToggle = async () => {
     try {
       const newIsHosting = !invoice.is_hosting
-      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+      const res = await authFetch(`${API_BASE}/invoices/${invoice.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           is_hosting: newIsHosting,
           billing_cycle: newIsHosting ? (invoice.billing_cycle || 'monthly') : null
@@ -178,9 +177,8 @@ function InvoiceRow({ invoice, onUpdate, onDelete }) {
 
   const handleBillingCycleChange = async (cycle) => {
     try {
-      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+      const res = await authFetch(`${API_BASE}/invoices/${invoice.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billing_cycle: cycle })
       })
       const updated = await res.json()
@@ -207,9 +205,8 @@ function InvoiceRow({ invoice, onUpdate, onDelete }) {
     setSaving(true)
     try {
       const newTotal = items.reduce((sum, item) => sum + (item.amount || 0), 0)
-      const res = await fetch(`${API_BASE}/invoices/${invoice.id}`, {
+      const res = await authFetch(`${API_BASE}/invoices/${invoice.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ line_items: items, subtotal: newTotal, total: newTotal })
       })
       const updated = await res.json()
@@ -403,7 +400,7 @@ function CreateInvoiceModal({ isOpen, onClose, projects, existingInvoices, onCre
   const loadUnbilled = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/time-logs?project_id=${selectedProject}&invoiced=false`)
+      const res = await authFetch(`${API_BASE}/time-logs?project_id=${selectedProject}&invoiced=false`)
       const data = await res.json()
       setUnbilledData(data)
       // Select all by default
@@ -451,9 +448,8 @@ function CreateInvoiceModal({ isOpen, onClose, projects, existingInvoices, onCre
         const combinedItems = [...(existingInvoice.line_items || []), ...newLineItems]
         const newTotal = combinedItems.reduce((sum, item) => sum + (item.amount || 0), 0)
 
-        await fetch(`${API_BASE}/invoices/${selectedInvoice}`, {
+        await authFetch(`${API_BASE}/invoices/${selectedInvoice}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             line_items: combinedItems,
             subtotal: newTotal,
@@ -467,9 +463,8 @@ function CreateInvoiceModal({ isOpen, onClose, projects, existingInvoices, onCre
         // Create new invoice
         const total = newLineItems.reduce((sum, item) => sum + item.amount, 0)
 
-        const res = await fetch(`${API_BASE}/invoices`, {
+        const res = await authFetch(`${API_BASE}/invoices`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             client_id: project.client_id,
             subtotal: total,
@@ -680,9 +675,9 @@ export default function InvoicesPage() {
     try {
       // Always fetch ALL invoices so we can detect recurring amounts properly
       const [invoicesRes, projectsRes, hostingRes] = await Promise.all([
-        fetch(`${API_BASE}/invoices`),
-        fetch(`${API_BASE}/projects?exclude_hosting=true`),
-        fetch(`${API_BASE}/projects?billing_platform=bonsai_legacy`)
+        authFetch(`${API_BASE}/invoices`),
+        authFetch(`${API_BASE}/projects?exclude_hosting=true`),
+        authFetch(`${API_BASE}/projects?billing_platform=bonsai_legacy`)
       ])
 
       const invoicesData = await invoicesRes.json()
@@ -709,7 +704,7 @@ export default function InvoicesPage() {
   const handleDeleteInvoice = async () => {
     if (!deleteConfirm) return
     try {
-      await fetch(`${API_BASE}/invoices/${deleteConfirm.id}`, { method: 'DELETE' })
+      await authFetch(`${API_BASE}/invoices/${deleteConfirm.id}`, { method: 'DELETE' })
       setInvoices(prev => prev.filter(inv => inv.id !== deleteConfirm.id))
     } catch (err) {
       console.error('Failed to delete invoice:', err)

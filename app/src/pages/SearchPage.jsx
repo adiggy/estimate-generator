@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, NavLink } from 'react-router-dom'
 import { Search, FolderKanban, FileText, Users, AlertCircle } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -116,7 +117,7 @@ export default function SearchPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`)
+      const res = await authFetch(`${API_BASE}/search?q=${encodeURIComponent(query)}`)
       if (!res.ok) throw new Error('Search failed')
       const data = await res.json()
       setResults(data)

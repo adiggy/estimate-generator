@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Play, Pause, Square, Clock, CheckCircle, Trash2, Receipt, ArrowRight, Edit2, Check, X } from 'lucide-react'
 import ConfirmModal from '../components/ConfirmModal'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -335,8 +336,8 @@ export default function TimePage() {
     setLoading(true)
     try {
       const [timersRes, projectsRes] = await Promise.all([
-        fetch(`${API_BASE}/time-logs`),
-        fetch(`${API_BASE}/projects?status=active`)
+        authFetch(`${API_BASE}/time-logs`),
+        authFetch(`${API_BASE}/projects?status=active`)
       ])
       const timers = await timersRes.json()
       const projectsData = await projectsRes.json()
@@ -359,9 +360,8 @@ export default function TimePage() {
 
   const handleStart = async (projectId, description) => {
     try {
-      const res = await fetch(`${API_BASE}/time-logs`, {
+      const res = await authFetch(`${API_BASE}/time-logs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           project_id: projectId,
           description: description || 'Work session',
@@ -378,9 +378,8 @@ export default function TimePage() {
 
   const handlePause = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+      const res = await authFetch(`${API_BASE}/time-logs/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'pause' })
       })
       const updated = await res.json()
@@ -398,9 +397,8 @@ export default function TimePage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+      const res = await authFetch(`${API_BASE}/time-logs/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'resume' })
       })
       const updated = await res.json()
@@ -413,9 +411,8 @@ export default function TimePage() {
 
   const handleStop = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+      const res = await authFetch(`${API_BASE}/time-logs/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'stop' })
       })
       const updated = await res.json()
@@ -428,9 +425,8 @@ export default function TimePage() {
 
   const handleUpdateTime = async (id, newSeconds) => {
     try {
-      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+      const res = await authFetch(`${API_BASE}/time-logs/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'set_time', accumulated_seconds: newSeconds })
       })
       const updated = await res.json()
@@ -442,9 +438,8 @@ export default function TimePage() {
 
   const handleFinalize = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/time-logs/${id}`, {
+      const res = await authFetch(`${API_BASE}/time-logs/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'finalize' })
       })
       const updated = await res.json()
@@ -462,7 +457,7 @@ export default function TimePage() {
   const confirmDelete = async () => {
     if (!deleteConfirm) return
     try {
-      await fetch(`${API_BASE}/time-logs/${deleteConfirm.id}`, { method: 'DELETE' })
+      await authFetch(`${API_BASE}/time-logs/${deleteConfirm.id}`, { method: 'DELETE' })
       setDraftTimers(prev => prev.filter(t => t.id !== deleteConfirm.id))
       setFinalizedEntries(prev => prev.filter(t => t.id !== deleteConfirm.id))
     } catch (err) {

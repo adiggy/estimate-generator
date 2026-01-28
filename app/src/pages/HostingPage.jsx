@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Server, DollarSign, Users, Calendar, TrendingUp, TrendingDown } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -14,7 +15,7 @@ export default function HostingPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_BASE}/hosting`)
+      const res = await authFetch(`${API_BASE}/hosting`)
       const data = await res.json()
       setRecords(data)
     } catch (err) {

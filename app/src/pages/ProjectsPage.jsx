@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { Plus, Filter, ChevronDown, Circle } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -86,7 +87,7 @@ export default function ProjectsPage() {
       if (statusFilter) {
         url += `&status=${statusFilter}`
       }
-      const res = await fetch(url)
+      const res = await authFetch(url)
       const data = await res.json()
       setProjects(data)
     } catch (err) {

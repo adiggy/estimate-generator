@@ -473,6 +473,19 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 py-6 print:bg-white print:py-0">
+      {/* Toolbar for view mode - Download PDF button */}
+      {isViewMode && (
+        <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800 shadow-lg"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
+        </div>
+      )}
+
       {/* Toolbar - not shown in view mode */}
       {!isViewMode && (
         <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">

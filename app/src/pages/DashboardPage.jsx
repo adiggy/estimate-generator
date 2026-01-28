@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { FolderKanban, Clock, Receipt, Server, CalendarDays, GanttChart, ClipboardList, TrendingUp, AlertCircle, ArrowRight } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -55,8 +56,8 @@ export default function DashboardPage() {
   const loadData = async () => {
     try {
       const [statsRes, projectsRes] = await Promise.all([
-        fetch(`${API_BASE}/stats`),
-        fetch(`${API_BASE}/projects?status=active&limit=5`)
+        authFetch(`${API_BASE}/stats`),
+        authFetch(`${API_BASE}/projects?status=active&limit=5`)
       ])
 
       if (statsRes.ok) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Calendar, Check, X, RefreshCw, Clock, AlertCircle, ChevronLeft, ChevronRight, DollarSign, TrendingUp } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -559,10 +560,10 @@ export default function SchedulePage() {
   const fetchDraft = async () => {
     try {
       const [draftRes, chunksRes, rocksRes, forecastRes] = await Promise.all([
-        fetch(`${API_BASE}/schedule/draft`),
-        fetch(`${API_BASE}/schedule/draft/chunks`),
-        fetch(`${API_BASE}/schedule/rocks`),
-        fetch(`${API_BASE}/schedule/forecast`)
+        authFetch(`${API_BASE}/schedule/draft`),
+        authFetch(`${API_BASE}/schedule/draft/chunks`),
+        authFetch(`${API_BASE}/schedule/rocks`),
+        authFetch(`${API_BASE}/schedule/forecast`)
       ])
 
       if (draftRes.ok) {
@@ -613,7 +614,7 @@ export default function SchedulePage() {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/schedule/generate`, {
+      const res = await authFetch(`${API_BASE}/schedule/generate`, {
         method: 'POST'
       })
 
@@ -636,7 +637,7 @@ export default function SchedulePage() {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/schedule/publish`, {
+      const res = await authFetch(`${API_BASE}/schedule/publish`, {
         method: 'POST'
       })
 
@@ -656,7 +657,7 @@ export default function SchedulePage() {
   // Clear draft
   const handleClear = async () => {
     try {
-      const res = await fetch(`${API_BASE}/schedule/clear`, {
+      const res = await authFetch(`${API_BASE}/schedule/clear`, {
         method: 'POST'
       })
 
