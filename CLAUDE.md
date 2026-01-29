@@ -89,6 +89,22 @@ const res = await authFetch(`${API_BASE}/projects`)
 
 **Why:** All API endpoints require authentication. Using raw `fetch()` causes blank pages because the API returns 401.
 
+### 6. Never Bypass Auth in Middleware
+
+**The `requireAuth` middleware must NEVER allow unauthenticated access based on query parameters.**
+
+```javascript
+// WRONG - allows any endpoint to be accessed without auth
+if (req.query.view === '1') return next();
+
+// CORRECT - use dedicated public endpoints
+app.get('/api/public/proposals/:id', (req, res) => { ... });
+```
+
+**Exceptions:** Only the OAuth browser redirect routes (`/api/os-beta/auth/google` and `/api/os-beta/auth/google/callback`) are exempt because browser redirects cannot include Authorization headers.
+
+**Why:** A `?view=1` bypass in `requireAuth` allowed unauthenticated access to ALL protected endpoints including writes to clients, proposals, and OS-beta data.
+
 ---
 
 ## Overview
@@ -311,6 +327,30 @@ MAX_HOURS_PER_DAY = 7
 ### Bug 5: Features Dropped in Refactoring
 - **Symptom:** Scheduler missing rocks, start date config
 - **Prevention:** Always check CLAUDE.md before modifying scheduler
+
+### Bug 6: Auth Bypass via ?view=1
+- **Symptom:** All protected endpoints accessible without authentication by adding `?view=1`
+- **Cause:** `requireAuth` middleware returned `next()` for any request with `view=1`
+- **Fix:** Removed bypass from `requireAuth` entirely; created dedicated `/api/public/proposals/:id` endpoint for client views
+- **Location:** `server.js` requireAuth function, `app/api/lib/auth.js`
+
+### Bug 7: Token Signing Used Login PIN
+- **Symptom:** Tokens brute-forceable if LOGIN_PW is a short PIN
+- **Cause:** `AUTH_SECRET` fell back to `LOGIN_PW` or a hardcoded string
+- **Fix:** Separate `AUTH_SECRET` env var (32+ chars required); server refuses to start without it
+- **Location:** `server.js`, `app/api/auth.js`, `app/api/lib/auth.js`
+
+### Bug 8: OAuth CSRF
+- **Symptom:** OAuth flow vulnerable to CSRF/account-linking attacks
+- **Cause:** No `state` parameter in Google OAuth flow
+- **Fix:** HMAC-signed state parameter generated per request (10-min TTL); stateless design works across serverless instances
+- **Location:** `server.js` and `app/api/os-beta.js` OAuth handlers
+
+### Bug 9: Path Traversal in Version Restore
+- **Symptom:** Crafted filenames could read files outside versions directory
+- **Cause:** Restore endpoint lacked validation present in delete endpoint
+- **Fix:** Added `isValidPathParam()`, filename regex, and path containment checks
+- **Location:** `server.js` version restore endpoint
 
 ---
 
