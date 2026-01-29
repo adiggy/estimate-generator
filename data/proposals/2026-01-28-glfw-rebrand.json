@@ -1,0 +1,90 @@
+{
+  "id": "2026-01-28-glfw-rebrand",
+  "createdAt": "2026-01-28",
+  "updatedAt": "2026-01-28",
+  "status": "draft",
+  "projectType": "web",
+  "archivePath": "archive/unc-glfw-rebrand",
+  "clientId": "unc-water-institute",
+  "clientName": "Catherine Rierson",
+  "clientRole": "Conference & Project Coordinator",
+  "clientEmail": "waterinstitute@unc.edu",
+  "clientCompany": "UNC Water Institute",
+  "projectName": "Global Lead-Free Water Website Rebrand",
+  "date": "January 28, 2026",
+  "expirationDate": "February 28, 2026",
+  "projectDescription": "Rebrand the Global Lead-Free Water (GLFW) single-page website to comply with UNC's new university-wide brand architecture. This includes implementing the Gillings School signature system, updating typography to Open Sans, and integrating the UNC website toolbar and argyle graphic elements throughout the scrolling page layout.",
+  "estimatedTimeline": "1-2 weeks. This project can be completed alongside or immediately following the main Water Institute rebrand.",
+  "internalNotes": "Single-page scrolling site. Part of the broader UNC brand compliance initiative. Same client as Water Institute rebrand. Straightforward update - apply brand system already developed for Water Institute.",
+  "phases": [
+    {
+      "name": "Brand Audit",
+      "description": "Review the single-page site structure, map all brand touchpoints requiring updates. Identify logo instances, typography, and graphic elements needing revision.",
+      "lowHrs": 1,
+      "highHrs": 2,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Design & Components",
+      "description": "Apply UNC brand system to the GLFW site. Adapt header, footer, and typography treatments from the Water Institute design system for this single-page context.",
+      "lowHrs": 2,
+      "highHrs": 3,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Page Redesign",
+      "description": "Redesign all sections of the single-page site with new brand elements. Sections include: Hero, Events, Problem Statement, Partners, FAQ, Resources, News, and CTA.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Development",
+      "description": "Code implementation of new design. Update CSS for Open Sans typography, implement new header/footer components, integrate argyle graphic elements where appropriate.",
+      "lowHrs": 3,
+      "highHrs": 4,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "QA & Launch",
+      "description": "Cross-browser and device testing. Verify brand compliance against UNC guidelines. Final review with client. Deploy to production.",
+      "lowHrs": 2,
+      "highHrs": 3,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "projectSpecifics": "## Page Sections\n\nThe Global Lead-Free Water website is a single-page scrolling site with the following sections:\n\n- **Hero** - Main banner with GLFW branding and mission statement\n- **Events** - Upcoming workshops, conferences, and gatherings\n- **Problem Statement** - Overview of lead contamination issues\n- **Partners** - Logos and links to partner organizations\n- **FAQ** - Frequently asked questions about the initiative\n- **Resources** - Downloads, links, and educational materials\n- **News** - Recent updates and announcements\n- **CTA** - Call-to-action for involvement/contact\n\n---\n\n## Brand Implementation Requirements\n\n- **Logo:** Replace standalone GLFW logo with Gillings School signature (interlocking NC + wordmark)\n- **Unit Name:** \"Global Lead-Free Water\" typeset in Open Sans Bold, positioned per brand guidelines\n- **Header:** Implement new UNC website toolbar with interlocking NC\n- **Footer:** Gillings School or UNC signature\n- **Typography:** Open Sans (Bold for headings, Regular for body)\n- **Graphics:** Integrate argyle pattern elements where appropriate\n- **Colors:** Maintain Carolina Blue, Navy palette consistent with UNC branding",
+  "exclusions": "- Content creation or copywriting\n- New photography or image sourcing\n- SEO optimization\n- Social media profile updates\n- Ongoing maintenance after launch\n- Additional revision rounds beyond two",
+  "upsells": [],
+  "hideDesignIncludes": false,
+  "benefits": [
+    {
+      "icon": "Shield",
+      "title": "Brand Compliant",
+      "description": "Full compliance with UNC brand architecture."
+    },
+    {
+      "icon": "Layout",
+      "title": "Unified Experience",
+      "description": "Consistent look with main Water Institute site."
+    },
+    {
+      "icon": "Zap",
+      "title": "Cross-browser Tested",
+      "description": "Works in Chrome, Safari, Firefox, Edge."
+    }
+  ],
+  "discountPercent": 0,
+  "monthlyFee": 0,
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

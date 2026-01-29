@@ -136,9 +136,52 @@ estimate-generator/
 3. **Claude asks for missing info** - client name, company (DO NOT guess)
 4. **Claude creates proposal** - JSON in `/data/proposals/YYYY-MM-DD-slug.json`
 5. **Claude archives inputs** - moves to `/archive/{client}-{project}/input/`
-6. **Claude opens browser** - `npm start` then `open "http://localhost:{port}/{id}"`
-7. **User edits and exports PDF** - save to archive folder
-8. **Push to production** - `npm run push-proposal {id}`
+6. **Claude writes research notes** - creates `RESEARCH.md` in archive input folder (see below)
+7. **Claude opens browser** - `npm start` then `open "http://localhost:{port}/{id}"`
+8. **User reviews and edits** - make any adjustments in the UI
+9. **Export PDF to archive** - save PDF to `/archive/{client}-{project}/` folder for future reference
+10. **Push to production** - `npm run push-proposal {id}`
+
+### Research Notes (RESEARCH.md)
+
+**After creating a proposal, always create `/archive/{client}-{project}/input/RESEARCH.md`**
+
+This file preserves context for future reference and revisions. Include:
+
+```markdown
+# {Project Name} - Research Notes
+
+## Project Overview
+- Client, company, contact info
+- Project type and high-level summary
+- Key deadlines or constraints
+
+## Source Documents Analyzed
+- List each input file and what it contained
+- Note any documents that were particularly informative
+
+## Scope Decisions
+- What's included and why
+- What's excluded and why
+- Any assumptions made
+
+## Estimation Rationale
+- How hours were calculated for each phase
+- Comparable past projects referenced
+- Risk factors that influenced estimates
+
+## Technical Considerations
+- Platform/technology choices
+- Integration requirements
+- Known constraints or dependencies
+
+## Open Questions / Future Considerations
+- Items that may come up later
+- Potential scope creep areas
+- Things to clarify if proposal is accepted
+```
+
+**Why:** Enables quick context restoration when revisiting proposals for revisions, follow-up projects, or reference.
 
 ### PDF Handling - CRITICAL
 

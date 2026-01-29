@@ -304,6 +304,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
   const [saving, setSaving] = useState(false)
   const [loadingVersions, setLoadingVersions] = useState(false)
   const [showVersionModal, setShowVersionModal] = useState(false)
+  const [versionError, setVersionError] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null) // {title, message, onConfirm, danger, confirmText}
 
   useEffect(() => {
@@ -329,6 +330,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
   const saveVersion = async (name) => {
     const versionName = name || `Version ${versions.length + 1}`
     setSaving(true)
+    setVersionError(null)
     try {
       const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions`, {
         method: 'POST',
@@ -337,9 +339,14 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       if (res.ok) {
         await loadVersions()
         setShowVersionModal(false)
+        setVersionError(null)
+      } else {
+        const errorData = await res.json().catch(() => ({}))
+        setVersionError(errorData.error || `Save failed (${res.status})`)
       }
     } catch (err) {
       console.error('Failed to save version:', err)
+      setVersionError('Network error - check your connection')
     }
     setSaving(false)
   }
@@ -505,7 +512,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
                 <div className="p-2 border-b border-slate-100 flex items-center justify-between">
                   <span className="text-sm font-medium text-slate-700">Versions</span>
                   <button
-                    onClick={() => setShowVersionModal(true)}
+                    onClick={() => { setVersionError(null); setShowVersionModal(true) }}
                     className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded hover:bg-slate-200"
                   >
                     + Save New
@@ -900,6 +907,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
         onClose={() => setShowVersionModal(false)}
         onSave={saveVersion}
         saving={saving}
+        error={versionError}
       />
 
       {/* Confirm Modal */}
@@ -938,14 +946,22 @@ function EditorPage() {
     return () => meta.remove()
   }, [])
 
-  // Check auth for edit mode
+  // Check auth for edit mode - must happen before data fetch
+  const authChecked = !isViewMode ? isAuthenticated() : true
+
   useEffect(() => {
     if (!isViewMode && !isAuthenticated()) {
       setNeedsAuth(true)
+      setLoading(false)
     }
   }, [isViewMode])
 
   useEffect(() => {
+    // Don't fetch if auth is needed but user isn't authenticated
+    if (!isViewMode && !authChecked) {
+      return
+    }
+
     // For public view mode, add ?view=1 to bypass auth on server
     const viewParam = isViewMode ? '?view=1' : ''
     const fetchFn = isViewMode ? fetch : authFetch
@@ -957,7 +973,9 @@ function EditorPage() {
       .then(([proposalData, templatesData]) => {
         setProposal(proposalData)
         const templatesMap = {}
-        templatesData.forEach(t => { templatesMap[t.type] = t })
+        if (Array.isArray(templatesData)) {
+          templatesData.forEach(t => { templatesMap[t.type] = t })
+        }
         setTemplates(templatesMap)
         setLoading(false)
       })
@@ -965,7 +983,7 @@ function EditorPage() {
         console.error('Failed to load proposal:', err)
         setLoading(false)
       })
-  }, [id, isViewMode])
+  }, [id, isViewMode, authChecked])
 
   const saveProposal = async (updatedProposal) => {
     // Don't save in view mode or if not authenticated
@@ -974,6 +992,11 @@ function EditorPage() {
       method: 'PUT',
       body: JSON.stringify(updatedProposal)
     })
+  }
+
+  // Show PIN entry if trying to edit without auth - check FIRST
+  if (needsAuth) {
+    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
   }
 
   if (loading) {
@@ -990,11 +1013,6 @@ function EditorPage() {
         <p className="text-slate-400">Proposal not found</p>
       </div>
     )
-  }
-
-  // Show PIN entry if trying to edit without auth
-  if (needsAuth) {
-    return <PinEntry onSuccess={() => setNeedsAuth(false)} />
   }
 
   return <Editor proposal={proposal} onSave={saveProposal} templates={templates} isViewMode={isViewMode} />
