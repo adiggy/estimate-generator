@@ -200,6 +200,30 @@ node scripts/backup-proposal.js {id} [name]  # Save version
 
 **Client view link:** `https://adesigns-estimate.vercel.app/{id}?view=1`
 
+### Client Notes
+
+Add a `clientNote` field to proposal JSON to display a highlighted message at the top of the proposal:
+
+```json
+{
+  "clientNote": "Note: This proposal was previously part of a larger project..."
+}
+```
+
+This displays in an amber-highlighted box above the Overview section.
+
+### PDF Export
+
+- Use the "Save as PDF" button in the proposal view (or browser print)
+- Header and sidebar are automatically hidden in print mode
+- The document title is set to `{ProjectName}-{ClientName}` for the suggested filename
+
+### Brand Assets
+
+- **Logo:** `app/public/logo-adesigns.jpg` - used in proposals and invoices
+- **Fonts:** Gilmer (Regular & Bold) in `app/public/fonts/`
+- **Colors:** Defined in `app/src/index.css` under `@theme`
+
 **See `docs/PROPOSALS.md` for JSON schema, templates, and estimation guidelines.**
 
 ---
@@ -300,26 +324,56 @@ npm run dev            # Vite only
 
 ### Deploying
 
-1. Push to main branch
-2. Vercel auto-deploys
-3. API routes in `app/api/` are serverless
+**Only push when user confirms changes are working locally.**
+
+1. Test changes thoroughly at `http://localhost:5173`
+2. User confirms ready to deploy
+3. Push to main branch → Vercel auto-deploys
+4. API routes in `app/api/` are serverless
 
 ### Database
 
-- **Neon PostgreSQL** is source of truth
+- **Neon PostgreSQL** is source of truth for all data
 - Schema in `scripts/schema_extension.sql`
 - `DATABASE_URL` in `.env`
+
+**IMPORTANT: Local JSON files are NOT the database.**
+- Proposals in `data/proposals/*.json` are local working files
+- To make proposals visible in the app, you MUST push them to Neon: `npm run push-proposal {id}`
+- The app (both local and production) reads from Neon, not from local JSON files
+- Version history files in `archive/*/versions/` are stored locally and in git, not in Neon
+
+### Deployment Workflow
+
+**Work locally first, push when ready:**
+1. Make changes and test locally at `http://localhost:5173`
+2. Only push to git/Vercel when changes are verified working
+3. Don't auto-push after every change - wait for user confirmation
 
 ---
 
 ## Authentication & Security
 
-### Password Authentication
+### Environment Variables (Required)
 
-- **Environment variable:** `LOGIN_PW` (required, no fallback)
+| Variable | Purpose |
+|----------|---------|
+| `LOGIN_PW` | Human-friendly PIN for login (any length) |
+| `AUTH_SECRET` | High-entropy secret for token signing (32+ chars) |
+
+Generate `AUTH_SECRET` with:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+**IMPORTANT:** The server will refuse to start if `AUTH_SECRET` is not set or is less than 32 characters.
+
+### Token Authentication
+
 - **Token format:** HMAC-signed stateless tokens (`{expiresAt}.{signature}`)
 - **Session duration:** 24 hours
 - **Storage:** Token stored in `localStorage` as `authToken`
+- **Signing:** Uses `AUTH_SECRET` (NOT the login PIN)
 
 ### Making Authenticated API Calls
 
@@ -341,6 +395,7 @@ The `authFetch` helper automatically:
 ### Rate Limiting
 
 - **Auth endpoints:** 5 requests per 15 minutes (brute force protection)
+- **Verify endpoint:** 5 requests per 15 minutes (prevents token guessing)
 - **API endpoints:** 100 requests per minute
 
 ### CORS Allowed Origins
@@ -356,8 +411,15 @@ const allowedOrigins = [
 
 ### Public Routes (No Auth Required)
 
-- `/{proposal-id}?view=1` - Client proposal view
-- `/projects/{id}?view=1` - Client project timeline view
+Public routes use dedicated endpoints - there is NO query param bypass:
+
+- `/api/public/proposals/:id` - Read-only proposal data for client view
+- `/{proposal-id}?view=1` - Client proposal view (uses public API)
+
+### OAuth Security
+
+- Google OAuth uses CSRF state tokens (generated per request, 10-minute TTL)
+- State is validated on callback to prevent CSRF attacks
 
 ---
 

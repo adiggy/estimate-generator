@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import {
   FolderKanban, Clock, X, Server, LayoutDashboard, ClipboardList, Receipt, CalendarDays, MessageSquare, GanttChart
 } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -12,13 +13,13 @@ function StatsWidget() {
   const [calendarStatus, setCalendarStatus] = useState(null)
 
   useEffect(() => {
-    fetch(`${API_BASE}/stats`)
+    authFetch(`${API_BASE}/stats`)
       .then(r => r.json())
       .then(setStats)
       .catch(console.error)
 
     // Check Google Calendar connection
-    fetch(`${API_BASE}/auth/google/status`)
+    authFetch(`${API_BASE}/auth/google/status`)
       .then(r => r.json())
       .then(setCalendarStatus)
       .catch(() => setCalendarStatus({ connected: false }))

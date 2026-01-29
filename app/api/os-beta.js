@@ -30,10 +30,11 @@ function escapeHtml(str) {
 }
 
 // Verify a signed session token (matches auth.js)
+// SECURITY: Uses AUTH_SECRET (high-entropy) for token signing
 function verifySessionToken(token) {
   if (!token) return false;
-  const secret = process.env.SESSION_SECRET || process.env.LOGIN_PW;
-  if (!secret) return false;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 32) return false;
 
   const [expiresAt, signature] = token.split('.');
   if (!expiresAt || !signature) return false;
@@ -45,6 +46,43 @@ function verifySessionToken(token) {
   const expectedSignature = crypto.createHmac('sha256', secret).update(expiresAt).digest('hex');
   try {
     return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+  } catch {
+    return false;
+  }
+}
+
+// OAuth state - use stateless HMAC-signed state for serverless compatibility
+// State format: {timestamp}.{signature} - self-verifying, no storage needed
+const OAUTH_STATE_TTL = 10 * 60 * 1000; // 10 minutes
+
+function createOAuthState() {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error('AUTH_SECRET required for OAuth state');
+  const timestamp = Date.now().toString();
+  const signature = crypto.createHmac('sha256', secret).update(timestamp).digest('hex');
+  return `${timestamp}.${signature}`;
+}
+
+function validateOAuthState(state) {
+  if (!state) return false;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return false;
+
+  const parts = state.split('.');
+  if (parts.length !== 2) return false;
+
+  const [timestamp, signature] = parts;
+  const timestampNum = parseInt(timestamp, 10);
+
+  // Check if expired
+  if (isNaN(timestampNum) || Date.now() - timestampNum > OAUTH_STATE_TTL) {
+    return false;
+  }
+
+  // Verify signature
+  const expectedSignature = crypto.createHmac('sha256', secret).update(timestamp).digest('hex');
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'));
   } catch {
     return false;
   }
@@ -62,18 +100,6 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
-  }
-
-  // AUTHENTICATION: Require valid token for all requests
-  // Exception: ?view=1 allows public proposal viewing
-  const isPublicView = req.query.view === '1';
-  if (!isPublicView) {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (!verifySessionToken(token)) {
-      return res.status(401).json({ error: 'Authentication required' });
-    }
   }
 
   const sql = neon(process.env.DATABASE_URL)
@@ -101,6 +127,20 @@ export default async function handler(req, res) {
   }
 
   const [resource, id, subResource] = pathSegments
+
+  // AUTHENTICATION: Require valid token for all requests
+  // Exception: OAuth browser redirects (can't include auth headers)
+  const isOAuthRoute = resource === 'auth' && id === 'google' &&
+    (subResource === undefined || subResource === 'callback')
+
+  if (!isOAuthRoute) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.replace('Bearer ', '');
+
+    if (!verifySessionToken(token)) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+  }
 
   try {
     // Route to appropriate handler
@@ -996,6 +1036,10 @@ function handleGoogleAuth(req, res) {
     })
   }
 
+  // SECURITY: Generate stateless HMAC-signed state to prevent CSRF attacks
+  // Works across serverless instances without shared storage
+  const state = createOAuthState()
+
   const scopes = [
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events'
@@ -1008,12 +1052,13 @@ function handleGoogleAuth(req, res) {
   authUrl.searchParams.set('scope', scopes)
   authUrl.searchParams.set('access_type', 'offline')
   authUrl.searchParams.set('prompt', 'consent')
+  authUrl.searchParams.set('state', state)
 
   res.redirect(authUrl.toString())
 }
 
 async function handleGoogleCallback(req, res, sql) {
-  const { code, error } = req.query
+  const { code, error, state } = req.query
 
   if (error) {
     return res.status(400).send(`
@@ -1021,6 +1066,19 @@ async function handleGoogleCallback(req, res, sql) {
         <body style="font-family: system-ui; padding: 40px; text-align: center;">
           <h1>Authorization Failed</h1>
           <p>Error: ${escapeHtml(error)}</p>
+          <a href="${APP_URL}/schedule">Back to OS</a>
+        </body>
+      </html>
+    `)
+  }
+
+  // SECURITY: Validate stateless HMAC-signed state to prevent CSRF
+  if (!validateOAuthState(state)) {
+    return res.status(400).send(`
+      <html>
+        <body style="font-family: system-ui; padding: 40px; text-align: center;">
+          <h1>Authorization Failed</h1>
+          <p>Invalid or expired state parameter. Please try again.</p>
           <a href="${APP_URL}/schedule">Back to OS</a>
         </body>
       </html>

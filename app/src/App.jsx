@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useParams, useSearchParams, Link, useLocation } from 'react-router-dom'
-import { Printer, Copy, Check, Palette, Layout as LayoutIcon, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon, Lock, Save, History, ChevronDown, RotateCcw, X } from 'lucide-react'
+import { Copy, Check, Palette, Layout as LayoutIcon, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool, Plus, Trash2, ArrowLeft, FileText, Calendar, Percent, Download, LinkIcon, Lock, Save, History, ChevronDown, RotateCcw, X } from 'lucide-react'
 
 // Import unified Layout and pages
 import Layout from './components/Layout'
@@ -46,35 +46,11 @@ const authFetch = async (url, options = {}) => {
 }
 
 const Logo = () => (
-  <svg viewBox="0 0 508.8 94.3" className="h-10 w-auto">
-    <defs>
-      <linearGradient id="logo-grad" x1="47.1" y1="8" x2="47.1" y2="90.2" gradientTransform="translate(0 96.4) scale(1 -1)" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stopColor="#f69220"/>
-        <stop offset="1" stopColor="#d72027"/>
-      </linearGradient>
-    </defs>
-    <path fill="url(#logo-grad)" d="M47.1,94.2h0c14.8,0,28-6.8,36.7-17.5,4.4-5.7,7-14.3-2.8-24.4-11.5-11.8-32.9-29-33.9-29s-22.3,17.1-33.9,29c-9.8,10.1-7.2,18.7-2.8,24.4,8.6,10.7,21.9,17.6,36.7,17.6h0Z"/>
-    <path fill="url(#logo-grad)" d="M47.1,12c2.4,0,25.1,18.3,47.1,36.5v-1.4C94.2,21.1,73.1,0,47.1,0h0C21.1,0,0,21.1,0,47.1s0,.9,0,1.4C22,30.4,44.7,12.1,47.1,12.1h0Z"/>
-    <path fill="#6e0e0f" opacity="0.4" d="M81,52.3c-11.5-11.8-32.9-29-33.9-29s-22.3,17.1-33.9,29c-3.5,3.6-5.4,6.9-6.2,10.1,1.1-2.2,2.8-4.6,5.5-7.1,11.8-10.7,33.6-26.2,34.6-26.2s22.8,15.5,34.6,26.2c2.6,2.4,4.4,4.7,5.5,6.9-.9-3.1-2.7-6.4-6.2-9.9Z"/>
-    <g fill="#2b303a">
-      <path d="M135.2,25l3.2,8.7h-6.3l3.2-8.7h0ZM147.4,43l-8.6-23.2h-7.2l-8.6,23.2h5.7l1.6-4.4h9.8l1.6,4.4h5.7Z"/>
-      <path d="M157.1,38v-13.3h5.1c3.1,0,5.5,2.5,5.5,6.6s-2.4,6.8-5.5,6.8h-5.1ZM151.6,19.7v23.2h10.7c6.6,0,11-4.9,11-11.6s-4.4-11.6-11-11.6h-10.7Z"/>
-      <path d="M190.1,24.6c1.7,0,3.1,1.3,3.1,2.9s-1.3,3-3.3,3h-5.8v-5.9h6ZM199.3,43l-5.6-8.3c3.1-1.3,4.7-4.1,4.7-7.1s-3.1-7.8-8.2-7.8h-11.6v23.2h5.4v-7.6h4l4.9,7.6h6.4Z"/>
-      <rect x="204.2" y="19.7" width="5.6" height="23.2"/>
-      <path d="M226.2,25l3.2,8.7h-6.3l3.2-8.7h-.1ZM238.4,43l-8.6-23.2h-7.2l-8.6,23.2h5.7l1.6-4.4h9.8l1.6,4.4h5.7Z"/>
-      <polygon points="248.1 19.7 242.6 19.7 242.6 43 259 43 259 37.9 248.1 37.9 248.1 19.7"/>
-      <path d="M279.5,38v-13.3h5.1c3.1,0,5.5,2.5,5.5,6.6s-2.4,6.8-5.5,6.8h-5.1ZM274,19.7v23.2h10.7c6.6,0,11-4.9,11-11.6s-4.4-11.6-11-11.6h-10.7Z"/>
-      <polygon points="318.5 19.7 301 19.7 301 43 318.5 43 318.5 38 306.4 38 306.4 33.6 316.8 33.6 316.8 28.8 306.4 28.8 306.4 24.7 318.5 24.7 318.5 19.7"/>
-      <path d="M332.8,43.4c5.7,0,9.6-3.2,9.6-7.3s-2.9-5.5-6.3-6.6l-5.1-1.7c-1.3-.4-1.9-1-1.9-1.8s1.3-1.9,3.2-1.9,4.1,1.1,4.7,2.8l5.1-1.5c-.9-3.4-4.4-6.1-9.6-6.1s-9,3.1-9,6.9,2.3,5.1,5.3,6.1l5.8,1.9c1.5.5,2.2,1.2,2.2,2.2s-1.4,2.2-3.6,2.2-5-1.7-5.6-3.9l-5.2,1.6c.9,3.7,4.2,7.1,10.5,7.1h-.1Z"/>
-      <rect x="347.6" y="19.7" width="5.6" height="23.2"/>
-      <path d="M382.8,29.8h-11.9v4.7h6.1c-.4,1.9-2.3,3.8-5.6,3.8-4.9,0-7.4-3.4-7.4-7s2.7-6.9,6.7-6.9,5,1.4,6.1,3.5l5.1-1.5c-1.4-3.9-5.4-7.2-11.3-7.2s-12.2,5.2-12.2,12.1,5.3,12.1,12.5,12.1,11.8-4.6,11.8-10.9v-2.8h0Z"/>
-      <polygon points="403 33 392.6 19.7 388.1 19.7 388.1 43 393.6 43 393.6 29.7 404 43 408.5 43 408.5 19.7 403 19.7 403 33"/>
-      <path d="M424.2,43.4c5.7,0,9.6-3.2,9.6-7.3s-2.9-5.5-6.3-6.6l-5.1-1.7c-1.3-.4-1.9-1-1.9-1.8s1.3-1.9,3.2-1.9,4.1,1.1,4.7,2.8l5.1-1.5c-.9-3.4-4.4-6.1-9.6-6.1s-9,3.1-9,6.9,2.3,5.1,5.3,6.1l5.8,1.9c1.5.5,2.2,1.2,2.2,2.2s-1.4,2.2-3.6,2.2-5-1.7-5.6-3.9l-5.2,1.6c.9,3.7,4.2,7.1,10.5,7.1h-.1Z"/>
-    </g>
-    <g fill="#9ca3af">
-      <text x="122" y="77" fontSize="14" fontFamily="system-ui">Strategic Marketing & Design</text>
-    </g>
-  </svg>
+  <img
+    src="/logo-adesigns.jpg"
+    alt="Adrial Designs - Strategic marketing designer"
+    className="h-12 w-auto"
+  />
 )
 
 const iconMap = { Palette, Layout: LayoutIcon, Smartphone, BarChart3, Shield, Zap, Megaphone, RefreshCw, PenTool }
@@ -309,6 +285,31 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
   const [activeVersionName, setActiveVersionName] = useState(null) // Track which version is active
   const [editorKey, setEditorKey] = useState(0) // Force re-render on restore
 
+  // Generate PDF filename from project name and client
+  const getPdfFilename = () => {
+    const projectName = data?.projectName || 'Proposal'
+    const clientName = data?.clientCompany || data?.clientName || 'Client'
+    // Clean up for filename
+    const clean = (str) => str.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-')
+    return `${clean(projectName)}-${clean(clientName)}.pdf`
+  }
+
+  // Download as PDF using browser print with proper filename
+  const handleDownloadPdf = () => {
+    // Set document title to suggested filename (browser uses this for "Save as PDF")
+    const originalTitle = document.title
+    const filename = getPdfFilename().replace('.pdf', '')
+    document.title = filename
+
+    // Trigger print dialog
+    window.print()
+
+    // Restore original title after a short delay
+    setTimeout(() => {
+      document.title = originalTitle
+    }, 1000)
+  }
+
   useEffect(() => {
     if (data?.id && !isViewMode) {
       loadVersions()
@@ -365,7 +366,8 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
             method: 'POST'
           })
           if (res.ok) {
-            const restored = await res.json()
+            const result = await res.json()
+            const restored = result.proposal || result
             setData(restored)
             setActiveVersionName(versionName || filename)
             setEditorKey(prev => prev + 1) // Force re-render of contentEditable fields
@@ -484,16 +486,16 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 py-6 print:bg-white print:py-0">
+    <div className="min-h-screen bg-slate-50 py-6 print:bg-white print:py-0 print:px-0 print:m-0 print:min-h-0 print:block">
       {/* Toolbar for view mode - Download PDF button */}
       {isViewMode && (
         <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
           <button
-            onClick={() => window.print()}
+            onClick={handleDownloadPdf}
             className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-800 shadow-lg"
           >
             <Download className="w-4 h-4" />
-            Download PDF
+            Save as PDF
           </button>
         </div>
       )}
@@ -582,11 +584,11 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
             {copiedLink ? 'Copied!' : 'Copy link'}
           </button>
           <button
-            onClick={() => window.print()}
+            onClick={handleDownloadPdf}
             className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded text-sm hover:bg-slate-800 shadow-sm"
           >
-            <Printer className="w-4 h-4" />
-            Print
+            <Download className="w-4 h-4" />
+            Save as PDF
           </button>
         </div>
       )}
@@ -628,7 +630,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       )}
 
       {/* Document */}
-      <div key={editorKey} className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-[0.6in] print:shadow-none">
+      <div key={editorKey} className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-0 print:m-0 print:w-full print:max-w-full print:shadow-none print:bg-white">
         {/* Header */}
         <header className="flex flex-col items-start sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-12">
           <Logo />
@@ -704,6 +706,13 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
             )}
           </div>
         </div>
+
+        {/* Client Note - shown if present */}
+        {data.clientNote && (
+          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-800">{data.clientNote}</p>
+          </div>
+        )}
 
         {/* Overview */}
         <div className="mb-8 w-full md:w-[60%] print:w-[60%]">
@@ -981,13 +990,19 @@ function EditorPage() {
       return
     }
 
-    // For public view mode, add ?view=1 to bypass auth on server
-    const viewParam = isViewMode ? '?view=1' : ''
+    // For public view mode, use the dedicated public API endpoint
+    // For edit mode, use the authenticated API
+    const proposalUrl = isViewMode
+      ? `${API_BASE}/public/proposals/${id}`
+      : `${API_BASE}/proposals/${id}`
     const fetchFn = isViewMode ? fetch : authFetch
 
     Promise.all([
-      fetchFn(`${API_BASE}/proposals/${id}${viewParam}`).then(r => r.json()),
-      fetchFn(`${API_BASE}/templates${viewParam}`).then(r => r.json())
+      fetchFn(proposalUrl).then(r => r.json()),
+      // Templates not needed for view mode, only fetch for edit mode
+      isViewMode
+        ? Promise.resolve([])
+        : authFetch(`${API_BASE}/templates`).then(r => r.json())
     ])
       .then(([proposalData, templatesData]) => {
         setProposal(proposalData)

@@ -153,50 +153,76 @@ function validate(schema) {
 
 const crypto = require('crypto');
 
-// In-memory session store (in production, use Redis or similar)
-const sessions = new Map();
+// Stateless HMAC token authentication (survives server restarts)
 const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-function generateSessionToken() {
-  return crypto.randomBytes(32).toString('hex');
+// SECURITY: Require separate high-entropy secret for token signing
+// LOGIN_PW is the human PIN, AUTH_SECRET is the crypto key
+const AUTH_SECRET = process.env.AUTH_SECRET;
+if (!AUTH_SECRET || AUTH_SECRET.length < 32) {
+  console.error('FATAL: AUTH_SECRET environment variable must be set and be at least 32 characters');
+  console.error('Generate one with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+  process.exit(1);
 }
 
+// OAuth state storage (short-lived, in-memory)
+const oauthStateStore = new Map();
+const OAUTH_STATE_TTL = 10 * 60 * 1000; // 10 minutes
+
 function createSession() {
-  const token = generateSessionToken();
   const expiresAt = Date.now() + SESSION_DURATION;
-  sessions.set(token, { expiresAt });
-  return token;
+  const signature = crypto
+    .createHmac('sha256', AUTH_SECRET)
+    .update(String(expiresAt))
+    .digest('hex');
+  return `${expiresAt}.${signature}`;
 }
 
 function validateSession(token) {
   if (!token) return false;
-  const session = sessions.get(token);
-  if (!session) return false;
-  if (Date.now() > session.expiresAt) {
-    sessions.delete(token);
+
+  const parts = token.split('.');
+  if (parts.length !== 2) return false;
+
+  const [expiresAt, signature] = parts;
+  const expiresAtNum = parseInt(expiresAt, 10);
+
+  // Check if expired
+  if (isNaN(expiresAtNum) || Date.now() > expiresAtNum) {
     return false;
   }
-  return true;
+
+  // Verify signature
+  const expectedSignature = crypto
+    .createHmac('sha256', AUTH_SECRET)
+    .update(expiresAt)
+    .digest('hex');
+
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'hex'),
+      Buffer.from(expectedSignature, 'hex')
+    );
+  } catch {
+    return false;
+  }
 }
 
 function destroySession(token) {
-  sessions.delete(token);
+  // Stateless tokens can't be invalidated server-side
+  // Client should just delete the token from localStorage
+  // For true logout, would need a blocklist (not implemented)
 }
 
-// Clean up expired sessions periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, session] of sessions) {
-    if (now > session.expiresAt) {
-      sessions.delete(token);
-    }
-  }
-}, 60 * 60 * 1000); // Clean every hour
-
 // Authentication middleware
+// SECURITY: No bypass except for OAuth browser redirects which can't include headers
 function requireAuth(req, res, next) {
-  // Allow public proposal view
-  if (req.query.view === '1') {
+  // Allow OAuth browser redirect flow (these can't include auth headers)
+  // Only allow the initiate and callback routes, not other auth routes
+  // Use originalUrl since req.path may be relative when using app.use() mounting
+  const fullPath = req.originalUrl.split('?')[0]; // Remove query string
+  if (fullPath.match(/^\/api\/os-beta\/auth\/google(\/callback)?$/)) {
     return next();
   }
 
@@ -283,14 +309,42 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ success: true });
 });
 
-// Verify session endpoint
-app.get('/api/auth/verify', (req, res) => {
+// Verify session endpoint - rate limited to prevent brute-force token guessing
+app.get('/api/auth/verify', authLimiter, (req, res) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.replace('Bearer ', '');
   if (validateSession(token)) {
     res.json({ valid: true });
   } else {
     res.status(401).json({ valid: false });
+  }
+});
+
+// =============================================================================
+// PUBLIC API ROUTES - No authentication required
+// =============================================================================
+
+// Public read-only proposal view (for client links)
+// Only returns the proposal data needed for viewing, no sensitive metadata
+app.get('/api/public/proposals/:id', (req, res) => {
+  try {
+    // SECURITY: Validate path parameter to prevent path traversal
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    const filePath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!filePath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      // Return proposal data (already public-facing content)
+      res.json(data);
+    } else {
+      res.status(404).json({ error: 'Proposal not found' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to read proposal' });
   }
 });
 
@@ -464,7 +518,7 @@ app.post('/api/proposals', (req, res) => {
 });
 
 // Update proposal
-app.put('/api/proposals/:id', (req, res) => {
+app.put('/api/proposals/:id', async (req, res) => {
   try {
     // SECURITY: Validate path parameter to prevent path traversal
     if (!isValidPathParam(req.params.id)) {
@@ -476,7 +530,25 @@ app.put('/api/proposals/:id', (req, res) => {
     }
     const proposal = req.body;
     proposal.updatedAt = new Date().toISOString().split('T')[0];
+
+    // Save to local file
     fs.writeFileSync(filePath, JSON.stringify(proposal, null, 2));
+
+    // Also sync to Neon database (both tables)
+    try {
+      await db.query(
+        `UPDATE proposals SET data = $1, updated_at = NOW() WHERE id = $2`,
+        [JSON.stringify(proposal), req.params.id]
+      );
+      await db.query(
+        `UPDATE os_beta_proposals SET data = $1, updated_at = NOW() WHERE id = $2`,
+        [JSON.stringify(proposal), req.params.id]
+      );
+    } catch (dbErr) {
+      console.error('Failed to sync proposal to Neon:', dbErr);
+      // Continue anyway - local file is saved
+    }
+
     res.json(proposal);
   } catch (err) {
     res.status(500).json({ error: 'Failed to update proposal' });
@@ -545,7 +617,7 @@ app.post('/api/proposals/:id/versions', (req, res) => {
       minute: '2-digit'
     }).replace(':', ''); // HHMM
     const safeName = versionName
-      ? versionName.replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '-').toLowerCase()
+      ? versionName.replace(/[^a-zA-Z0-9-_\s]/g, '').replace(/\s+/g, '-')
       : 'backup';
     const filename = `${estDate}_${estTime}_${safeName}.json`;
     const filepath = path.join(versionsDir, filename);
@@ -712,9 +784,21 @@ app.delete('/api/proposals/:id/versions/:filename', (req, res) => {
 });
 
 // Restore a version (overwrites current proposal)
-app.post('/api/proposals/:id/versions/:filename/restore', (req, res) => {
+app.post('/api/proposals/:id/versions/:filename/restore', async (req, res) => {
   try {
+    // SECURITY: Validate path parameters
+    if (!isValidPathParam(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid proposal ID' });
+    }
+    // Filename validation: allow date_time_name.json format
+    if (!/^[\w\-]+\.json$/.test(req.params.filename)) {
+      return res.status(400).json({ error: 'Invalid filename' });
+    }
+
     const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
+    if (!proposalPath.startsWith(PROPOSALS_DIR)) {
+      return res.status(400).json({ error: 'Invalid proposal path' });
+    }
 
     if (!fs.existsSync(proposalPath)) {
       return res.status(404).json({ error: 'Proposal not found' });
@@ -722,7 +806,12 @@ app.post('/api/proposals/:id/versions/:filename/restore', (req, res) => {
 
     const proposal = JSON.parse(fs.readFileSync(proposalPath, 'utf8'));
     const archivePath = proposal.archivePath || `archive/${req.params.id}`;
-    const versionPath = path.join(__dirname, archivePath, 'versions', req.params.filename);
+    const versionsDir = path.resolve(__dirname, archivePath, 'versions');
+    const versionPath = path.join(versionsDir, req.params.filename);
+    // Verify resolved path is within versions directory
+    if (!versionPath.startsWith(versionsDir)) {
+      return res.status(400).json({ error: 'Invalid version path' });
+    }
 
     if (!fs.existsSync(versionPath)) {
       return res.status(404).json({ error: 'Version not found' });
@@ -733,8 +822,23 @@ app.post('/api/proposals/:id/versions/:filename/restore', (req, res) => {
     // Update the timestamp
     versionData.updatedAt = new Date().toISOString().split('T')[0];
 
-    // Save as current proposal
+    // Save as current proposal (local file)
     fs.writeFileSync(proposalPath, JSON.stringify(versionData, null, 2));
+
+    // Also sync to Neon database (both tables)
+    try {
+      await db.query(
+        `UPDATE proposals SET data = $1, updated_at = NOW() WHERE id = $2`,
+        [JSON.stringify(versionData), req.params.id]
+      );
+      await db.query(
+        `UPDATE os_beta_proposals SET data = $1, updated_at = NOW() WHERE id = $2`,
+        [JSON.stringify(versionData), req.params.id]
+      );
+    } catch (dbErr) {
+      console.error('Failed to sync restored version to Neon:', dbErr);
+      // Continue anyway - local file is restored
+    }
 
     res.json({ success: true, proposal: versionData });
   } catch (err) {
@@ -1210,12 +1314,19 @@ app.get('/api/os-beta/proposals/:id', async (req, res) => {
   }
 });
 
-// Update proposal in OS Beta (firewalled - changes do NOT affect live)
+// Update proposal in OS Beta (now syncs to both tables since merger)
 app.put('/api/os-beta/proposals/:id', async (req, res) => {
   try {
     const proposal = req.body;
+    // Update both tables to keep them in sync
     await db.sql`
       UPDATE os_beta_proposals
+      SET data = ${JSON.stringify(proposal)}::jsonb,
+          updated_at = NOW()
+      WHERE id = ${req.params.id}
+    `;
+    await db.sql`
+      UPDATE proposals
       SET data = ${JSON.stringify(proposal)}::jsonb,
           updated_at = NOW()
       WHERE id = ${req.params.id}
@@ -1227,10 +1338,11 @@ app.put('/api/os-beta/proposals/:id', async (req, res) => {
   }
 });
 
-// Delete proposal from OS Beta (firewalled - does NOT affect live)
+// Delete proposal from OS Beta (now syncs to both tables since merger)
 app.delete('/api/os-beta/proposals/:id', async (req, res) => {
   try {
     await db.sql`DELETE FROM os_beta_proposals WHERE id = ${req.params.id}`;
+    await db.sql`DELETE FROM proposals WHERE id = ${req.params.id}`;
     res.json({ success: true, id: req.params.id });
   } catch (err) {
     console.error('Delete proposal error:', err);
@@ -1359,6 +1471,18 @@ app.get('/api/os-beta/auth/google', (req, res) => {
     });
   }
 
+  // SECURITY: Generate random state to prevent CSRF attacks
+  const state = crypto.randomBytes(32).toString('hex');
+  oauthStateStore.set(state, { createdAt: Date.now() });
+
+  // Clean up expired states
+  const now = Date.now();
+  for (const [key, value] of oauthStateStore.entries()) {
+    if (now - value.createdAt > OAUTH_STATE_TTL) {
+      oauthStateStore.delete(key);
+    }
+  }
+
   const scopes = [
     'https://www.googleapis.com/auth/calendar.readonly',
     'https://www.googleapis.com/auth/calendar.events'
@@ -1371,13 +1495,14 @@ app.get('/api/os-beta/auth/google', (req, res) => {
   authUrl.searchParams.set('scope', scopes);
   authUrl.searchParams.set('access_type', 'offline');
   authUrl.searchParams.set('prompt', 'consent');
+  authUrl.searchParams.set('state', state);
 
   res.redirect(authUrl.toString());
 });
 
 // Google OAuth callback
 app.get('/api/os-beta/auth/google/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
 
   if (error) {
     return res.status(400).send(`
@@ -1387,6 +1512,31 @@ app.get('/api/os-beta/auth/google/callback', async (req, res) => {
       </body></html>
     `);
   }
+
+  // SECURITY: Validate state parameter to prevent CSRF
+  if (!state || !oauthStateStore.has(state)) {
+    return res.status(400).send(`
+      <html><body style="font-family: system-ui; padding: 40px; text-align: center;">
+        <h1>Authorization Failed</h1><p>Invalid or expired state parameter. Please try again.</p>
+        <a href="${APP_URL}/schedule">Back to OS</a>
+      </body></html>
+    `);
+  }
+
+  // Check if state has expired
+  const storedState = oauthStateStore.get(state);
+  if (Date.now() - storedState.createdAt > OAUTH_STATE_TTL) {
+    oauthStateStore.delete(state);
+    return res.status(400).send(`
+      <html><body style="font-family: system-ui; padding: 40px; text-align: center;">
+        <h1>Authorization Failed</h1><p>Authorization request expired. Please try again.</p>
+        <a href="${APP_URL}/schedule">Back to OS</a>
+      </body></html>
+    `);
+  }
+
+  // Delete state after validation (one-time use)
+  oauthStateStore.delete(state);
 
   if (!code) {
     return res.status(400).json({ error: 'No authorization code provided' });
@@ -2113,12 +2263,13 @@ app.post('/api/os-beta/stripe/checkout-session', async (req, res) => {
     }
 
     // Create Checkout Session in setup mode (for saving card, no charge)
+    // SECURITY: Use APP_URL instead of req.headers.origin to prevent open redirect
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'setup',
       payment_method_types: ['card'],
-      success_url: `${req.headers.origin || APP_URL}/hosting?setup=success&client=${encodeURIComponent(clientId)}`,
-      cancel_url: 'https://www.adrialdesigns.com',
+      success_url: `${APP_URL}/hosting?setup=success&client=${encodeURIComponent(clientId)}`,
+      cancel_url: `${APP_URL}/hosting`,
       metadata: {
         os_client_id: clientId
       }

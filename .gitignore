@@ -26,6 +26,10 @@ npm-debug.log*
 # Working files
 working/
 
+# Test artifacts
+test-results/
+playwright-report/
+
 # Archive PDFs (keep structure, not large files)
 archive/**/*.pdf
 .vercel

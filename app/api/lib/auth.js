@@ -1,10 +1,11 @@
 import crypto from 'crypto';
 
 // Verify a signed session token
+// SECURITY: Requires AUTH_SECRET (high-entropy) for token signing
 export function verifySessionToken(token) {
   if (!token) return false;
-  const secret = process.env.SESSION_SECRET || process.env.LOGIN_PW;
-  if (!secret) return false;
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 32) return false;
 
   const [expiresAt, signature] = token.split('.');
   if (!expiresAt || !signature) return false;
@@ -22,10 +23,8 @@ export function verifySessionToken(token) {
 }
 
 // Check authentication from request
+// SECURITY: No bypass - use dedicated public routes for unauthenticated access
 export function requireAuth(req) {
-  // Allow public view mode
-  if (req.query?.view === '1') return true;
-
   const authHeader = req.headers?.authorization;
   const token = authHeader?.replace('Bearer ', '');
   return verifySessionToken(token);
