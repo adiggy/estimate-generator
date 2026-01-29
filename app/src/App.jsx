@@ -306,6 +306,8 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
   const [showVersionModal, setShowVersionModal] = useState(false)
   const [versionError, setVersionError] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null) // {title, message, onConfirm, danger, confirmText}
+  const [activeVersionName, setActiveVersionName] = useState(null) // Track which version is active
+  const [editorKey, setEditorKey] = useState(0) // Force re-render on restore
 
   useEffect(() => {
     if (data?.id && !isViewMode) {
@@ -351,7 +353,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
     setSaving(false)
   }
 
-  const restoreVersion = (filename) => {
+  const restoreVersion = (filename, versionName) => {
     setConfirmModal({
       title: 'Restore Version',
       message: 'Restore this version? Current changes will be overwritten.',
@@ -365,6 +367,8 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
           if (res.ok) {
             const restored = await res.json()
             setData(restored)
+            setActiveVersionName(versionName || filename)
+            setEditorKey(prev => prev + 1) // Force re-render of contentEditable fields
           }
         } catch (err) {
           console.error('Failed to restore version:', err)
@@ -405,6 +409,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
 
   const updateField = useCallback((field, value) => {
     setData(prev => ({ ...prev, [field]: value }))
+    setActiveVersionName(null) // Clear version indicator when user edits
   }, [])
 
   const updatePhase = useCallback((index, updatedPhase) => {
@@ -496,6 +501,20 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       {/* Toolbar - not shown in view mode */}
       {!isViewMode && (
         <div className="no-print fixed top-4 right-4 flex items-center gap-2 z-50">
+          {/* Active Version Indicator */}
+          {activeVersionName && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700 shadow-sm">
+              <History className="w-3 h-3" />
+              <span className="max-w-32 truncate">{activeVersionName}</span>
+              <button
+                onClick={() => setActiveVersionName(null)}
+                className="hover:text-amber-900"
+                title="Dismiss"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
           {/* Version History */}
           <div className="relative">
             <button
@@ -529,7 +548,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
                       className="w-full px-3 py-2 hover:bg-slate-50 flex items-center gap-2 group"
                     >
                       <button
-                        onClick={() => restoreVersion(v.filename)}
+                        onClick={() => restoreVersion(v.filename, v.versionName || v.filename)}
                         className="flex items-center gap-2 flex-1 min-w-0 text-left"
                         title="Restore this version"
                       >
@@ -609,7 +628,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       )}
 
       {/* Document */}
-      <div className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-[0.6in] print:shadow-none">
+      <div key={editorKey} className="print-page mx-auto bg-white shadow-sm px-4 py-8 sm:p-[0.6in] print:p-[0.6in] print:shadow-none">
         {/* Header */}
         <header className="flex flex-col items-start sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-12">
           <Logo />
