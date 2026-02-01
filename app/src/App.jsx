@@ -18,32 +18,10 @@ import MasterTimelinePage from './pages/MasterTimelinePage'
 import FeedbackPage from './pages/FeedbackPage'
 import SearchPage from './pages/SearchPage'
 
+import { getAuthToken, setAuthToken, isAuthenticated, authFetch } from './lib/auth'
+
 // Use relative path for Vercel, localhost for dev
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api' : '/api'
-
-// Token-based authentication
-const getAuthToken = () => localStorage.getItem('authToken')
-const setAuthToken = (token) => {
-  if (token) {
-    localStorage.setItem('authToken', token)
-  } else {
-    localStorage.removeItem('authToken')
-  }
-}
-const isAuthenticated = () => !!getAuthToken()
-
-// Helper for authenticated fetch requests
-const authFetch = async (url, options = {}) => {
-  const token = getAuthToken()
-  const headers = {
-    ...options.headers,
-    'Content-Type': 'application/json',
-  }
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
-  }
-  return fetch(url, { ...options, headers })
-}
 
 const Logo = () => (
   <img
@@ -664,7 +642,15 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
             )}
             {data.expirationDate && (
               <span className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" /> Valid until {data.expirationDate}
+                <Calendar className="w-3 h-3" /> Valid until {isViewMode ? (
+                  data.expirationDate
+                ) : (
+                  <EditableText
+                    value={data.expirationDate}
+                    onChange={(val) => updateField('expirationDate', val)}
+                    tag="span"
+                  />
+                )}
               </span>
             )}
           </div>
@@ -710,7 +696,16 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
         {/* Client Note - shown if present */}
         {data.clientNote && (
           <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-800">{data.clientNote}</p>
+            {isViewMode ? (
+              <p className="text-sm text-amber-800">{data.clientNote}</p>
+            ) : (
+              <EditableText
+                value={data.clientNote}
+                onChange={(val) => updateField('clientNote', val)}
+                tag="p"
+                className="text-sm text-amber-800"
+              />
+            )}
           </div>
         )}
 
@@ -984,6 +979,17 @@ function EditorPage() {
     }
   }, [isViewMode])
 
+  // Listen for expired tokens (fired by authFetch on 401)
+  useEffect(() => {
+    if (isViewMode) return
+    const handleExpired = () => {
+      setNeedsAuth(true)
+      setLoading(false)
+    }
+    window.addEventListener('auth-expired', handleExpired)
+    return () => window.removeEventListener('auth-expired', handleExpired)
+  }, [isViewMode])
+
   useEffect(() => {
     // Don't fetch if auth is needed but user isn't authenticated
     if (!isViewMode && !authChecked) {
@@ -998,11 +1004,17 @@ function EditorPage() {
     const fetchFn = isViewMode ? fetch : authFetch
 
     Promise.all([
-      fetchFn(proposalUrl).then(r => r.json()),
+      fetchFn(proposalUrl).then(r => {
+        if (!r.ok) return null
+        return r.json()
+      }),
       // Templates not needed for view mode, only fetch for edit mode
       isViewMode
         ? Promise.resolve([])
-        : authFetch(`${API_BASE}/templates`).then(r => r.json())
+        : authFetch(`${API_BASE}/templates`).then(r => {
+            if (!r.ok) return []
+            return r.json()
+          })
     ])
       .then(([proposalData, templatesData]) => {
         setProposal(proposalData)
@@ -1055,6 +1067,13 @@ function EditorPage() {
 // Protected Layout wrapper - requires PIN authentication
 function ProtectedLayout() {
   const [needsAuth, setNeedsAuth] = useState(!isAuthenticated())
+
+  // Listen for expired tokens (fired by authFetch on 401)
+  useEffect(() => {
+    const handleExpired = () => setNeedsAuth(true)
+    window.addEventListener('auth-expired', handleExpired)
+    return () => window.removeEventListener('auth-expired', handleExpired)
+  }, [])
 
   if (needsAuth) {
     return <PinEntry onSuccess={() => setNeedsAuth(false)} />

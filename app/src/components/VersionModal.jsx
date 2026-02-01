@@ -1,19 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Save, X } from 'lucide-react'
 
 export default function VersionModal({
   isOpen,
   onClose,
   onSave,
-  saving = false
+  saving = false,
+  error = null
 }) {
   const [versionName, setVersionName] = useState('')
+
+  // Reset input when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setVersionName('')
+    }
+  }, [isOpen])
 
   if (!isOpen) return null
 
   const handleSave = () => {
     onSave(versionName.trim())
-    setVersionName('')
+    // Don't clear here - let parent handle on success
   }
 
   const handleClose = () => {
@@ -57,6 +65,11 @@ export default function VersionModal({
           <p className="mt-2 text-xs text-slate-400">
             Leave blank to auto-generate a name with the current date/time.
           </p>
+          {error && (
+            <p className="mt-2 text-sm text-red-600">
+              {error}
+            </p>
+          )}
         </div>
 
         {/* Footer */}

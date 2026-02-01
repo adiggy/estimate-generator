@@ -82,11 +82,33 @@ body {
 }
 
 @media print {
-  html, body {
-    width: 8.5in;
+  /* Reset everything at the root level */
+  html {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
   }
 
-  .no-print {
+  body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  /* Reset the #root container */
+  #root {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  /* Hide everything that shouldn't print */
+  .no-print,
+  .no-print * {
     display: none !important;
   }
 
@@ -96,12 +118,32 @@ body {
     color: inherit !important;
   }
 
-  .print-page {
-    width: auto;
-    min-height: auto;
+  /* Reset the outer wrapper (min-h-screen bg-slate-50) */
+  .min-h-screen {
+    min-height: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
     padding: 0 !important;
-    margin: 0;
+    background: white !important;
+    display: block !important;
+  }
+
+  /* Override all Tailwind bg-* utilities */
+  [class*="bg-slate"],
+  [class*="bg-gray"] {
+    background: white !important;
+  }
+
+  /* Main document container */
+  .print-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
     box-shadow: none !important;
+    background: white !important;
+    transform: none !important;
   }
 
   [contenteditable] {
@@ -112,6 +154,17 @@ body {
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Ensure table columns don't get cut off */
+  table {
+    width: 100% !important;
+    table-layout: fixed !important;
+  }
+
+  td, th {
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
 
   .pricing-row {
@@ -127,18 +180,17 @@ body {
     break-inside: avoid;
   }
 
-  /* Keep upsells section together, add top padding for page breaks */
+  /* Keep upsells section together */
   .upsells-section {
     break-inside: avoid;
-    padding-top: 0.5in;
   }
 
-  /* Add breathing room at top of pages after breaks */
-  thead {
+  /* Prevent breaks inside rows */
+  tr {
     break-inside: avoid;
   }
 
-  thead tr th {
-    padding-top: 0.5in;
+  thead {
+    break-inside: avoid;
   }
 }

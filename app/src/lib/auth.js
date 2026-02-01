@@ -13,6 +13,7 @@ export const setAuthToken = (token) => {
 export const isAuthenticated = () => !!getAuthToken()
 
 // Helper for authenticated fetch requests
+// Automatically clears expired tokens and fires 'auth-expired' so the UI shows login
 export const authFetch = async (url, options = {}) => {
   const token = getAuthToken()
   const headers = {
@@ -22,5 +23,10 @@ export const authFetch = async (url, options = {}) => {
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
-  return fetch(url, { ...options, headers })
+  const res = await fetch(url, { ...options, headers })
+  if (res.status === 401) {
+    setAuthToken(null)
+    window.dispatchEvent(new Event('auth-expired'))
+  }
+  return res
 }

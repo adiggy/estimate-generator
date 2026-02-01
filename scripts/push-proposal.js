@@ -30,6 +30,7 @@ async function pushProposal(proposalId) {
   console.log(`  Client: ${proposal.clientName}`)
   console.log(`  ID: ${proposal.id}`)
 
+  // Push to live proposals table (for client-facing views)
   await sql`
     INSERT INTO proposals (id, data, created_at, updated_at)
     VALUES (${proposal.id}, ${JSON.stringify(proposal)}, ${proposal.createdAt}, NOW())
@@ -38,7 +39,16 @@ async function pushProposal(proposalId) {
       updated_at = NOW()
   `
 
-  console.log('✓ Pushed to Neon database')
+  // Also push to os_beta_proposals table (for dashboard)
+  await sql`
+    INSERT INTO os_beta_proposals (id, data, created_at, updated_at)
+    VALUES (${proposal.id}, ${JSON.stringify(proposal)}, ${proposal.createdAt}, NOW())
+    ON CONFLICT (id) DO UPDATE SET
+      data = ${JSON.stringify(proposal)},
+      updated_at = NOW()
+  `
+
+  console.log('✓ Pushed to Neon database (both tables)')
 }
 
 async function pushAllProposals() {
@@ -58,7 +68,14 @@ async function pushAllProposals() {
         data = ${JSON.stringify(proposal)},
         updated_at = NOW()
     `
-    console.log(`  ✓ Done`)
+    await sql`
+      INSERT INTO os_beta_proposals (id, data, created_at, updated_at)
+      VALUES (${proposal.id}, ${JSON.stringify(proposal)}, ${proposal.createdAt || new Date().toISOString().split('T')[0]}, NOW())
+      ON CONFLICT (id) DO UPDATE SET
+        data = ${JSON.stringify(proposal)},
+        updated_at = NOW()
+    `
+    console.log(`  ✓ Done (both tables)`)
   }
 
   console.log(`\n✓ All ${files.length} proposals pushed to Neon`)

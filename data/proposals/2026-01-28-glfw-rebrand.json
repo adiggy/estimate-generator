@@ -1,7 +1,7 @@
 {
   "id": "2026-01-28-glfw-rebrand",
   "createdAt": "2026-01-28",
-  "updatedAt": "2026-01-28",
+  "updatedAt": "2026-01-30",
   "status": "draft",
   "projectType": "web",
   "archivePath": "archive/unc-glfw-rebrand",
@@ -11,6 +11,7 @@
   "clientEmail": "waterinstitute@unc.edu",
   "clientCompany": "UNC Water Institute",
   "projectName": "Global Lead-Free Water Website Rebrand",
+  "clientNote": "Note: This proposal was previously included within the Water Institute website rebrand proposal. We've separated it to give you clearer visibility into each project's scope and cost.",
   "date": "January 28, 2026",
   "expirationDate": "February 28, 2026",
   "projectDescription": "Rebrand the Global Lead-Free Water (GLFW) single-page website to comply with UNC's new university-wide brand architecture. This includes implementing the Gillings School signature system, updating typography to Open Sans, and integrating the UNC website toolbar and argyle graphic elements throughout the scrolling page layout.",

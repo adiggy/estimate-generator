@@ -6,7 +6,7 @@
   "scripts": {
     "api": "node server.js",
     "dev": "cd app && npm run dev",
-    "start": "node server.js & (cd app && npm run dev)",
+    "start": "concurrently --kill-others -n api,vite -c blue,green \"node server.js\" \"cd app && npm run dev\"",
     "push-proposal": "node scripts/push-proposal.js",
     "push-all-proposals": "node scripts/push-proposal.js --all",
     "import-legacy": "node scripts/import-legacy.js",
@@ -31,6 +31,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.0"
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.2.1"
   }
 }
