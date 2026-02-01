@@ -4,6 +4,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/os-beta/:path*", "destination": "/api/os-beta" },
-    { "source": "/:path*", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
