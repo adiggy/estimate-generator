@@ -66,13 +66,27 @@ if (scheduledSlots.length > 0) {
 
 ### 4. Two API Implementations Must Stay in Sync
 
-**Both `server.js` (local) and `app/api/os-beta.js` (Vercel) implement the same APIs.**
+**Both `server.js` (local) and Vercel serverless functions (`app/api/`) implement the same APIs.**
 
 When modifying scheduler, time tracking, or other features:
 1. Update `server.js` for local development
-2. Update `app/api/os-beta.js` for production
+2. Update the corresponding `app/api/` route for production
 
 **Why:** Features can work locally but break in production if only one file is updated.
+
+### 4a. Vercel Serverless Routing Constraints
+
+**Vercel has quirks that differ from Express. Follow these rules:**
+
+- **Max 12 serverless functions** on the Hobby plan. Consolidate where possible.
+- **Never put `.json` in URL path segments.** Vercel strips/misroutes file extensions. Use query params instead (e.g., `?f=filename.json`).
+- **`[...params]` catch-all routes are unreliable** for multi-segment paths. Prefer a single `index.js` with query params.
+- **`[[...params]]` optional catch-all is NOT supported** in plain Vercel serverless functions (only in Next.js).
+- **Moving `[id].js` to `[id]/index.js`** is required when adding nested routes under `[id]/`.
+- **Import paths change** when moving files — always verify relative imports after restructuring.
+- **SPA rewrite must exclude API paths:** Use `/((?!api/).*)` not `/:path*` (which catches `/api/*` too).
+
+**Why:** Multiple bugs were caused by Vercel routing not matching Express behavior.
 
 ### 5. All API Calls Must Use authFetch
 
@@ -120,8 +134,10 @@ This is the **Agency Operating System** for Adrial Designs, combining:
 - **Worker** = Claude Code via CLI for intelligent tasks
 
 **URLs:**
-- **Local:** `http://localhost:5173` (proposals) / `http://localhost:5173/dashboard/os-beta` (OS)
+- **Local:** `http://localhost:5173` (dashboard) / `http://localhost:5173/{proposal-id}` (proposal view)
 - **Production:** `https://adesigns-estimate.vercel.app`
+- **Client view:** `https://adesigns-estimate.vercel.app/{proposal-id}?view=1` (public, no auth)
+- Old `/dashboard/os-beta/*` URLs auto-redirect to root-level equivalents
 
 ---
 
@@ -352,6 +368,24 @@ MAX_HOURS_PER_DAY = 7
 - **Fix:** Added `isValidPathParam()`, filename regex, and path containment checks
 - **Location:** `server.js` version restore endpoint
 
+### Bug 10: Vercel SPA Rewrite Caught API Routes
+- **Symptom:** All API routes returned HTML instead of JSON on Vercel production
+- **Cause:** `/:path*` SPA rewrite in `vercel.json` matched `/api/*` paths, redirecting them to `index.html`
+- **Fix:** Changed rewrite source to `/((?!api/).*)` using negative lookahead to exclude API paths
+- **Location:** `app/vercel.json`
+
+### Bug 11: Expired Token Shows Blank Page Instead of Login
+- **Symptom:** Proposal pages showed blank template with empty sections instead of redirecting to login
+- **Cause:** `EditorPage` didn't listen for `auth-expired` event (only `ProtectedLayout` did); the 401 response body was parsed as proposal data, rendering an empty template
+- **Fix:** Added `auth-expired` event listener to `EditorPage` + added `r.ok` check before parsing API responses
+- **Location:** `app/src/App.jsx` EditorPage component
+
+### Bug 12: Version API Routing Failures on Vercel
+- **Symptom:** Version list, restore, and delete operations all failed on Vercel production
+- **Cause:** Multiple compounding issues: (1) `.json` in URL path segments stripped by Vercel, (2) `[...params]` catch-all routes unreliable for multi-segment paths, (3) `[[...params]]` optional catch-all not supported outside Next.js
+- **Fix:** Consolidated all version operations into single `versions/index.js` using query params (`?f=filename.json&action=restore`) instead of URL path segments
+- **Location:** `app/api/proposals/[id]/versions/index.js`
+
 ---
 
 ## Development
@@ -384,7 +418,10 @@ npm run dev            # Vite only
 - Proposals in `data/proposals/*.json` are local working files
 - To make proposals visible in the app, you MUST push them to Neon: `npm run push-proposal {id}`
 - The app (both local and production) reads from Neon, not from local JSON files
-- Version history files in `archive/*/versions/` are stored locally and in git, not in Neon
+- Version history is stored in the `proposal_versions` table in Neon AND as local files in `archive/*/versions/`
+- When saving/deleting versions locally, `server.js` syncs to Neon automatically
+- On Vercel, versions are read/written directly to Neon via `app/api/proposals/[id]/versions/index.js`
+- Version API uses query params for filename operations (e.g., `?f=filename.json&action=restore`) because Vercel can't handle `.json` in URL path segments
 
 ### Deployment Workflow
 
