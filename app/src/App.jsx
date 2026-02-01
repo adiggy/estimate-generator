@@ -340,7 +340,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       danger: false,
       onConfirm: async () => {
         try {
-          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions/${filename}/restore`, {
+          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions?f=${encodeURIComponent(filename)}&action=restore`, {
             method: 'POST'
           })
           if (res.ok) {
@@ -367,7 +367,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       danger: true,
       onConfirm: async () => {
         try {
-          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions/${filename}`, {
+          const res = await authFetch(`${API_BASE}/proposals/${data.id}/versions?f=${encodeURIComponent(filename)}`, {
             method: 'DELETE'
           })
           if (res.ok) {

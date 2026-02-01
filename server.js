@@ -581,13 +581,25 @@ app.delete('/api/proposals/:id', (req, res) => {
 // PROPOSAL VERSIONING
 // ============================================================================
 
-// Save a version of a proposal
+// Save a version OR restore a version (query param: ?f=filename&action=restore)
 app.post('/api/proposals/:id/versions', async (req, res) => {
   try {
     // SECURITY: Validate path parameter
     if (!isValidPathParam(req.params.id)) {
       return res.status(400).json({ error: 'Invalid proposal ID' });
     }
+
+    // Query-param style restore: POST /versions?f=filename&action=restore
+    if (req.query.f && req.query.action === 'restore') {
+      const filename = req.query.f;
+      if (!/^[\w\-]+\.json$/.test(filename)) {
+        return res.status(400).json({ error: 'Invalid filename' });
+      }
+      // Delegate to the path-based restore handler
+      req.params.filename = filename;
+      return restoreVersionHandler(req, res);
+    }
+
     const { versionName } = req.body;
     const proposalPath = path.join(PROPOSALS_DIR, `${req.params.id}.json`);
     if (!proposalPath.startsWith(PROPOSALS_DIR)) {
@@ -755,7 +767,8 @@ app.get('/api/proposals/:id/versions/:filename', (req, res) => {
 });
 
 // Delete a version
-app.delete('/api/proposals/:id/versions/:filename', async (req, res) => {
+// Shared delete handler (used by both path-based and query-param routes)
+async function deleteVersionHandler(req, res) {
   try {
     // SECURITY: Validate path parameters
     if (!isValidPathParam(req.params.id)) {
@@ -804,10 +817,13 @@ app.delete('/api/proposals/:id/versions/:filename', async (req, res) => {
     console.error('Version delete error:', err);
     res.status(500).json({ error: 'Failed to delete version' });
   }
-});
+}
 
-// Restore a version (overwrites current proposal)
-app.post('/api/proposals/:id/versions/:filename/restore', async (req, res) => {
+// Delete via path: DELETE /versions/:filename
+app.delete('/api/proposals/:id/versions/:filename', deleteVersionHandler);
+
+// Shared restore handler (used by both path-based and query-param routes)
+async function restoreVersionHandler(req, res) {
   try {
     // SECURITY: Validate path parameters
     if (!isValidPathParam(req.params.id)) {
@@ -868,6 +884,18 @@ app.post('/api/proposals/:id/versions/:filename/restore', async (req, res) => {
     console.error('Version restore error:', err);
     res.status(500).json({ error: 'Failed to restore version' });
   }
+}
+
+// Restore via path: POST /versions/:filename/restore
+app.post('/api/proposals/:id/versions/:filename/restore', restoreVersionHandler);
+
+// Delete via query param: DELETE /versions?f=filename
+app.delete('/api/proposals/:id/versions', (req, res) => {
+  if (!req.query.f) {
+    return res.status(400).json({ error: 'Missing filename parameter (f)' });
+  }
+  req.params.filename = req.query.f;
+  return deleteVersionHandler(req, res);
 });
 
 // ============================================================================
