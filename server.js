@@ -582,7 +582,7 @@ app.delete('/api/proposals/:id', (req, res) => {
 // ============================================================================
 
 // Save a version of a proposal
-app.post('/api/proposals/:id/versions', (req, res) => {
+app.post('/api/proposals/:id/versions', async (req, res) => {
   try {
     // SECURITY: Validate path parameter
     if (!isValidPathParam(req.params.id)) {
@@ -622,8 +622,20 @@ app.post('/api/proposals/:id/versions', (req, res) => {
     const filename = `${estDate}_${estTime}_${safeName}.json`;
     const filepath = path.join(versionsDir, filename);
 
-    // Save version
+    // Save version (local file)
     fs.writeFileSync(filepath, JSON.stringify(proposal, null, 2));
+
+    // Sync to Neon
+    try {
+      await db.query(
+        `INSERT INTO proposal_versions (proposal_id, filename, version_name, data)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (proposal_id, filename) DO UPDATE SET data = $4`,
+        [req.params.id, filename, versionName || 'backup', JSON.stringify(proposal)]
+      );
+    } catch (dbErr) {
+      console.error('Version Neon sync error:', dbErr.message);
+    }
 
     res.json({
       success: true,
@@ -743,7 +755,7 @@ app.get('/api/proposals/:id/versions/:filename', (req, res) => {
 });
 
 // Delete a version
-app.delete('/api/proposals/:id/versions/:filename', (req, res) => {
+app.delete('/api/proposals/:id/versions/:filename', async (req, res) => {
   try {
     // SECURITY: Validate path parameters
     if (!isValidPathParam(req.params.id)) {
@@ -776,6 +788,17 @@ app.delete('/api/proposals/:id/versions/:filename', (req, res) => {
     }
 
     fs.unlinkSync(versionPath);
+
+    // Sync to Neon
+    try {
+      await db.query(
+        `DELETE FROM proposal_versions WHERE proposal_id = $1 AND filename = $2`,
+        [req.params.id, req.params.filename]
+      );
+    } catch (dbErr) {
+      console.error('Version Neon delete sync error:', dbErr.message);
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('Version delete error:', err);
