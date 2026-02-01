@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless'
-import { requireAuth, setCorsHeaders } from '../lib/auth.js'
+import { requireAuth, setCorsHeaders } from '../../lib/auth.js'
 
 export default async function handler(req, res) {
   setCorsHeaders(req, res);
