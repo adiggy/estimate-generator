@@ -368,8 +368,11 @@ npm run dev            # Vite only
 
 1. Test changes thoroughly at `http://localhost:5173`
 2. User confirms ready to deploy
-3. Push to main branch → Vercel auto-deploys
-4. API routes in `app/api/` are serverless
+3. **Push any modified proposals to Neon** before git push: `npm run push-proposal {id}` for each changed proposal
+4. Push to main branch → Vercel auto-deploys
+5. API routes in `app/api/` are serverless
+
+**IMPORTANT: When the user asks to "commit and push", ALWAYS push modified proposals to Neon first.** The app reads from Neon, not local JSON files — if you only git push without pushing to Neon, proposals will appear missing or stale in production.
 
 ### Database
 
