@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FolderKanban, FileText, Search, Menu, X, Users } from 'lucide-react'
+import { authFetch } from '../lib/auth'
 
 const API_BASE = import.meta.env.DEV ? 'http://localhost:3002/api/os-beta' : '/api/os-beta'
 
@@ -23,7 +24,7 @@ export default function Header({ onMenuClick }) {
     const timer = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await fetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery)}`)
+        const res = await authFetch(`${API_BASE}/search?q=${encodeURIComponent(searchQuery)}`)
         if (res.ok) {
           const data = await res.json()
           setSearchResults(data)
