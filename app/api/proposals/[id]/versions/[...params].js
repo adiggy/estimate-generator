@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless'
-import { requireAuth, setCorsHeaders } from '../../../../lib/auth.js'
+import { requireAuth, setCorsHeaders } from '../../../lib/auth.js'
 
 // GET    /api/proposals/:id/versions/:filename         → get version data
 // DELETE /api/proposals/:id/versions/:filename         → delete version
