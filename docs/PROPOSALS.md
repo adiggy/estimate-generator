@@ -155,7 +155,7 @@ Versions saved as JSON in `{archivePath}/versions/` with format `YYYY-MM-DD_HHMM
 
 ## PDF Export & Print Layout
 
-**Filename:** `proposal_Project-Name_Client-Last-Name.pdf`
+**Filename:** `Project-Name_Client-Company-Name.pdf` (e.g., `Contract-Form-System_Banzai-Entertainment-Inc.pdf`)
 
 **Page Structure:**
 - Page 1: Header, title, overview, What's Included

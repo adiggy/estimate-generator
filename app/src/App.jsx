@@ -269,7 +269,7 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
     const clientName = data?.clientCompany || data?.clientName || 'Client'
     // Clean up for filename
     const clean = (str) => str.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-')
-    return `${clean(projectName)}-${clean(clientName)}.pdf`
+    return `${clean(projectName)}_${clean(clientName)}.pdf`
   }
 
   // Download as PDF using browser print with proper filename
@@ -428,6 +428,60 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
       )
     }))
   }, [])
+
+  const updateBenefit = useCallback((index, field, value) => {
+    setData(prev => {
+      const current = prev.benefits || templates[prev.projectType]?.benefits || []
+      return {
+        ...prev,
+        benefits: current.map((b, i) => i === index ? { ...b, [field]: value } : b)
+      }
+    })
+    setActiveVersionName(null)
+  }, [templates])
+
+  const deleteBenefit = useCallback((index) => {
+    setConfirmModal({
+      title: 'Remove Card',
+      message: 'Are you sure you want to remove this card?',
+      confirmText: 'Remove',
+      danger: true,
+      onConfirm: () => {
+        setData(prev => {
+          const current = prev.benefits || templates[prev.projectType]?.benefits || []
+          return { ...prev, benefits: current.filter((_, i) => i !== index) }
+        })
+        setActiveVersionName(null)
+      }
+    })
+  }, [templates])
+
+  const updateUpsell = useCallback((index, field, value) => {
+    setData(prev => {
+      const current = prev.upsells || templates[prev.projectType]?.upsells || []
+      return {
+        ...prev,
+        upsells: current.map((u, i) => i === index ? { ...u, [field]: value } : u)
+      }
+    })
+    setActiveVersionName(null)
+  }, [templates])
+
+  const deleteUpsell = useCallback((index) => {
+    setConfirmModal({
+      title: 'Remove Card',
+      message: 'Are you sure you want to remove this card?',
+      confirmText: 'Remove',
+      danger: true,
+      onConfirm: () => {
+        setData(prev => {
+          const current = prev.upsells || templates[prev.projectType]?.upsells || []
+          return { ...prev, upsells: current.filter((_, i) => i !== index) }
+        })
+        setActiveVersionName(null)
+      }
+    })
+  }, [templates])
 
   const handleCopyLink = async () => {
     const baseUrl = window.location.origin
@@ -733,11 +787,39 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
               {benefits.map((benefit, i) => {
                 const Icon = iconMap[benefit.icon]
                 return (
-                  <div key={i} className="flex gap-3">
+                  <div key={i} className="relative flex gap-3 group">
+                    {!isViewMode && (
+                      <button
+                        onClick={() => deleteBenefit(i)}
+                        className="no-print absolute -top-2 -right-2 w-5 h-5 bg-white border border-slate-200 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-slate-400 shadow-sm"
+                        title="Remove card"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                     {Icon && <Icon className="w-5 h-5 text-[#d72027] shrink-0 mt-0.5" strokeWidth={1.5} />}
                     <div>
-                      <div className="font-medium text-slate-900">{benefit.title}</div>
-                      <div className="text-slate-500 text-sm">{benefit.description}</div>
+                      {isViewMode ? (
+                        <>
+                          <div className="font-medium text-slate-900">{benefit.title}</div>
+                          <div className="text-slate-500 text-sm">{benefit.description}</div>
+                        </>
+                      ) : (
+                        <>
+                          <EditableText
+                            value={benefit.title}
+                            onChange={(val) => updateBenefit(i, 'title', val)}
+                            tag="div"
+                            className="font-medium text-slate-900"
+                          />
+                          <EditableText
+                            value={benefit.description}
+                            onChange={(val) => updateBenefit(i, 'description', val)}
+                            tag="div"
+                            className="text-slate-500 text-sm"
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
                 )
@@ -880,10 +962,38 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
               {upsells.map((upsell, i) => {
                 const Icon = iconMap[upsell.icon]
                 return (
-                  <div key={i} className="border border-slate-200 rounded-lg p-4">
+                  <div key={i} className="relative border border-slate-200 rounded-lg p-4 group">
+                    {!isViewMode && (
+                      <button
+                        onClick={() => deleteUpsell(i)}
+                        className="no-print absolute -top-2 -right-2 w-5 h-5 bg-white border border-slate-200 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 hover:border-red-300 hover:text-red-600 text-slate-400 shadow-sm"
+                        title="Remove card"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                     {Icon && <Icon className="w-5 h-5 text-[#d72027] mb-2" strokeWidth={1.5} />}
-                    <div className="font-medium text-slate-900 mb-1">{upsell.title}</div>
-                    <div className="text-slate-500 text-sm">{upsell.description}</div>
+                    {isViewMode ? (
+                      <>
+                        <div className="font-medium text-slate-900 mb-1">{upsell.title}</div>
+                        <div className="text-slate-500 text-sm">{upsell.description}</div>
+                      </>
+                    ) : (
+                      <>
+                        <EditableText
+                          value={upsell.title}
+                          onChange={(val) => updateUpsell(i, 'title', val)}
+                          tag="div"
+                          className="font-medium text-slate-900 mb-1"
+                        />
+                        <EditableText
+                          value={upsell.description}
+                          onChange={(val) => updateUpsell(i, 'description', val)}
+                          tag="div"
+                          className="text-slate-500 text-sm"
+                        />
+                      </>
+                    )}
                   </div>
                 )
               })}
@@ -895,7 +1005,15 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
         {data.projectSpecifics && (
           <div className="mb-12">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">Project Specifics</h3>
-            <div className="prose prose-slate prose-sm max-w-none">
+            {!isViewMode && (
+              <textarea
+                value={data.projectSpecifics}
+                onChange={(e) => updateField('projectSpecifics', e.target.value)}
+                className="no-print w-full min-h-[300px] p-4 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#bb2225]/20 focus:border-[#bb2225]/40"
+                placeholder="Markdown content..."
+              />
+            )}
+            <div className={`prose prose-slate prose-sm max-w-none ${!isViewMode ? 'hidden print:block' : ''}`}>
               <MarkdownContent content={data.projectSpecifics} />
             </div>
           </div>
@@ -905,7 +1023,15 @@ function Editor({ proposal: initialProposal, onSave, templates, isViewMode }) {
         {data.exclusions && (
           <div className="mb-12">
             <h3 className="text-xs font-bold uppercase tracking-wide text-[#bb2225] mb-4">What Is Not Included</h3>
-            <div className="prose prose-slate prose-sm max-w-none">
+            {!isViewMode && (
+              <textarea
+                value={data.exclusions}
+                onChange={(e) => updateField('exclusions', e.target.value)}
+                className="no-print w-full min-h-[120px] p-4 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-[#bb2225]/20 focus:border-[#bb2225]/40"
+                placeholder="Markdown content..."
+              />
+            )}
+            <div className={`prose prose-slate prose-sm max-w-none ${!isViewMode ? 'hidden print:block' : ''}`}>
               <MarkdownContent content={data.exclusions} />
             </div>
           </div>

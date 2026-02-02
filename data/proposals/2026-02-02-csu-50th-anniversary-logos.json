@@ -1,0 +1,77 @@
+{
+  "id": "2026-02-02-csu-50th-anniversary-logos",
+  "createdAt": "2026-02-02",
+  "updatedAt": "2026-02-02",
+  "status": "draft",
+  "projectType": "logo",
+  "archivePath": "archive/csu-50th-anniversary-logos",
+  "clientId": "csu-oie",
+  "clientName": "Chrisana Hughes",
+  "clientCompany": "Colorado State University / Office for Inclusive Excellence",
+  "projectName": "50th Anniversary Logos — B/AACC & El Centro",
+  "date": "February 2, 2026",
+  "expirationDate": "March 2, 2026",
+  "projectDescription": "Two distinct 50th anniversary logo designs for CSU's Black/African American Cultural Center (B/AACC) and El Centro, plus a joint event logo and vector pattern recreation. Both logos honor the rich cultural identities of each center — the Sankofa bird for B/AACC and historical Latinx/e textiles for El Centro — while staying aligned with CSU's Find Your Energy branding.",
+  "estimatedTimeline": "Estimated 4–6 weeks from project kickoff. Individual logos developed first, joint logo follows once both are approved.",
+  "internalNotes": "Option B from the 3-tier email to Chrisana. Jared approved temporary campaign marks. Must use Poppins + Bodoni. Joint logo pending Kauline's approval. Historical tension between offices — Aaron and John want solidarity/coalition messaging in the joint mark. John hinted at wanting to keep using the Sankofa design long-term (potential future work). BAACC has no vector files for their kente patterns.",
+  "phases": [
+    {
+      "name": "Discovery & Research",
+      "description": "Review all reference materials — historical textiles, Sankofa bird references, existing logos, Black History Month branding, wall wrap imagery. Extract color palettes from low-resolution BAACC kente patterns. Develop mood boards for each center.",
+      "lowHrs": 5,
+      "highHrs": 8,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "B/AACC Logo Design",
+      "description": "Custom stylized Sankofa bird illustration incorporating the kente color palette (reds, greens, oranges, yellows). Bird as central piece with \"50th\" as supporting element. \"Looking BAACC\" wordplay in expanded version. Two layouts: badge/icon and horizontal. Includes 2 revision rounds.",
+      "lowHrs": 18,
+      "highHrs": 24,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "El Centro Logo Design",
+      "description": "Textile-inspired composition leveraging existing pattern assets from Peru, Costa Rica, Ecuador, Guatemala, and Panama — arranged as shards, bands, or border treatments with sunburst/weaving concept. \"50º aniversario\" with proper Spanish notation. Two layouts: badge/icon and horizontal. Includes 2 revision rounds.",
+      "lowHrs": 14,
+      "highHrs": 20,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Joint Event Logo",
+      "description": "Creative merger of both individual logos for the signature joint event — conveying solidarity and coalition rather than two separate marks side by side. Could be a split-50 treatment, interlocking design, or blended pattern approach. Single primary layout with one adaptation.",
+      "lowHrs": 6,
+      "highHrs": 10,
+      "rate": 120,
+      "optional": true
+    },
+    {
+      "name": "B/AACC Kente Vector Recreation",
+      "description": "Recreate the traditional kente-cloth patterns from B/AACC's circular logo as clean vector artwork in Adobe Illustrator. Scalable files usable at any size for future marketing, independent of the 50th anniversary logo.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Final File Delivery",
+      "description": "Complete logo package for all marks: vector source files (AI, EPS, SVG), high-resolution rasters (PNG, JPG) in RGB and CMYK. Multiple file sizes organized by use case. Color palette documentation.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "projectSpecifics": "## B/AACC 50th Anniversary Logo\n\n- **Central motif:** The Sankofa bird — a West African symbol with neck curved back, egg in mouth, facing east. Feet, direction, and egg are essential elements.\n- **Proverb:** *\"It is not taboo to go back and fetch that which you have forgotten.\"*\n- **Tagline:** \"Looking BAACC\" — wordplay on the center's nickname tying to the Sankofa's meaning.\n- **Color palette:** Rich reds, greens, oranges, and yellows from the traditional kente-pattern logo.\n- **Style:** Stylized and graphic rather than fully illustrated with intricate feather-by-feather patterning. Still incorporates kente colors and reads unmistakably as the Sankofa.\n- **Layouts:** Badge/icon version (works at lapel pin size) + horizontal version (for cookbook/lookbook, email headers).\n\n## El Centro 50th Anniversary Logo\n\n- **Central motif:** Historical textiles from Peru, Costa Rica, Ecuador, Guatemala, and Panama — representing the diversity of the Latinx/e community woven together.\n- **Concept:** Weaving together — textiles as shards, bands, or borders rather than a single flat pattern. Inspired by the sunburst wall wrap outside El Centro's office.\n- **Language:** \"50º aniversario\" with proper Spanish superscript notation. Possible inclusion of \"1976 – 2026\".\n- **Messaging themes:** Orgullo (pride/past), Coming Together (present), Futuro (future). Audiences are \"threadbearers\" — local community, B/AACC, alumni, current students.\n- **Layouts:** Badge/icon version (pins, stickers) + horizontal version (email headers, postcards).\n\n## Joint Event Logo (Optional)\n\n- Creative merger of both individual logos for the signature joint event.\n- Must convey solidarity and coalition — not two separate marks bordered together.\n- Ideas explored: split-50 treatment (5 = El Centro, 0 = B/AACC), interlocking patterns, blended textile/feather elements.\n- Used for: postcards, Save the Date, email headers, websites, social media, fundraising.\n\n## B/AACC Kente Vector Recreation\n\n- Traditional kente patterns from B/AACC's circular logo recreated as clean vector files.\n- Scalable at any size for future marketing use.\n\n## Brand Constraints\n\n- **Typography:** Poppins and Bodoni (CSU brand fonts) for both logos.\n- **Brand alignment:** Must align with CSU Find Your Energy branding. Approved by Jared as temporary campaign marks.\n- **Duration:** One-year campaign marks for 2026. Do not replace official CSU unit identifiers.\n- **Color use:** Primarily full color. Structured so outlines remain recognizable in single-color applications.\n- **Scalability:** Must work from lapel pin size (~1 inch) up to poster/banner size.",
+  "exclusions": "- Marketing collateral design (postcards, email templates, social media graphics) — logos only; collateral can be quoted separately\n- Animation or motion graphics versions of the logos\n- Merchandise production (pins, stickers, apparel) — files provided for vendor production\n- CSU unit identifier modifications\n- Ongoing design support beyond the deliverables listed above",
+  "discountPercent": 0,
+  "monthlyFee": 0,
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

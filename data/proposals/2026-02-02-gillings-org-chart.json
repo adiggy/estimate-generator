@@ -1,0 +1,103 @@
+{
+  "id": "2026-02-02-gillings-org-chart",
+  "createdAt": "2026-02-02",
+  "updatedAt": "2026-02-02",
+  "status": "draft",
+  "projectType": "app",
+  "archivePath": "archive/gillings-org-chart",
+  "clientId": "unc-gillings",
+  "clientName": "Elizabeth French",
+  "clientRole": "Senior Associate Dean for Strategy",
+  "clientCompany": "UNC Gillings School of Global Public Health",
+  "projectName": "Interactive Org Chart",
+  "date": "February 2, 2026",
+  "expirationDate": "March 2, 2026",
+  "projectDescription": "A browser-based interactive organizational chart for UNC Gillings School of Global Public Health that replaces the static PDF currently. The tool lets your team update personnel, titles, and photos directly (no designer needed) and produces both a responsive web view (shareable as a link) and a print-ready 8.5×11 PDF download.",
+  "estimatedTimeline": "Estimated 2–3 weeks from project kickoff.",
+  "internalNotes": "Existing relationship — I update their org chart PDF a few times per year. This tool replaces that recurring work with a self-service solution. Built with Claude Code for efficiency. ~30 people currently on the chart. Each person links to their Gillings about page. The current PDF has a specific visual hierarchy: Dean/Vice Dean at top, Departments on left, Mission areas in center, Strategy and Central Admin on right.",
+  "benefits": [
+    {
+      "icon": "PenTool",
+      "title": "Self-Service Editing",
+      "description": "Add, edit, or remove people directly — no designer or developer needed for routine updates."
+    },
+    {
+      "icon": "Smartphone",
+      "title": "Responsive Web View",
+      "description": "Share a link that looks great on desktops, tablets, and phones."
+    },
+    {
+      "icon": "Zap",
+      "title": "Print-Ready PDF",
+      "description": "Download a clean 8.5×11 version formatted for printing, just like the current PDF."
+    },
+    {
+      "icon": "Layout",
+      "title": "Live Links",
+      "description": "Each person links to their Gillings about page for more information."
+    },
+    {
+      "icon": "RefreshCw",
+      "title": "Always Current",
+      "description": "Updates appear immediately — no waiting for a designer to revise and re-export."
+    },
+    {
+      "icon": "Shield",
+      "title": "Password Protected",
+      "description": "Editing is restricted to authorized staff. The public view is read-only."
+    }
+  ],
+  "phases": [
+    {
+      "name": "Data Architecture & Setup",
+      "description": "Map the full hierarchy from the existing org chart (~30 positions). Design the data model for personnel records (name, credentials, title, department, section, photo, Gillings about-page URL). Set up the project and hosting infrastructure.",
+      "lowHrs": 4,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Org Chart Web Interface",
+      "description": "Build the responsive org chart layout reflecting the current visual hierarchy — Dean and Vice Dean at top, Departments on the left, Mission and Strategic Priority areas in the center, Strategy and Central Administration on the right. Each person's card shows their photo, name, credentials, and title, and links to their Gillings about page. Adapts for mobile screens.",
+      "lowHrs": 10,
+      "highHrs": 15,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Editor Interface",
+      "description": "Simple password-protected admin view where authorized staff can add, edit, or remove people — update names, titles, credentials, photos, and about-page links. Changes appear on the live chart after publish. No code or design skills required.",
+      "lowHrs": 8,
+      "highHrs": 12,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Print / PDF Layout",
+      "description": "A print-optimized layout that outputs a clean 8.5×11 page matching the look and feel of the current PDF (with new UNC branding). Includes a “Download PDF” button on the web view so anyone can save or print a copy.",
+      "lowHrs": 4,
+      "highHrs": 7,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Launch",
+      "description": "Cross-browser and mobile device testing. Populate with all current personnel data and photos. Deploy to production. Video walkthrough for your team on how to use the tool.",
+      "lowHrs": 3,
+      "highHrs": 6,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "projectSpecifics": "## What You Get\n\n- **A shareable link** to the live org chart that works on any device — desktop, tablet, or phone\n- **A self-service editor** where your team can update personnel without contacting a designer\n- **A downloadable PDF** formatted for 8.5×11 printing, matching the current org chart layout\n- **Clickable profiles** — each person links to their Gillings about page\n\n## Current Org Chart Structure (Preserved)\n\n- **Dean & Vice Dean** at the top\n- **Departments** column (8 chairs: Biostatistics, Environmental Sciences & Engineering, Epidemiology, Health Behavior, Health Policy & Management, Public Health Leadership & Practice, Maternal & Child Health, Nutrition)\n- **Mission & Strategic Priority Areas** (Faculty/Staff Affairs, Research, Academics, Practice, Global Health, Advancement)\n- **Strategy, Innovation & Implementation** (Strategy, Communications & Marketing, Dean’s Office, Innovation, Strategic Analysis & Business Intelligence)\n- **Central Administration** (Facilities, Finance & Business, Human Resources, IT & Project Planning, Student Affairs)\n- **External Advisory Boards** and **Student Leaders** listed\n\n## How the Editor Works\n\n- Log in with a password (only one editor allowed at a time)\n- Click any person to edit their name, title, credentials, photo, or about-page link (upload high-resolution images and the system will automatically optimize them according to their print or screen use case)\n- Add a new person to any section, or remove someone who has left\n- Mark a position as vacant (shows “Position Vacant” placeholder)\n- Click **Publish** when you’re ready — changes appear on the public view after you publish",
+  "exclusions": "- Photo editing (optimizing photos you upload to the system is included)\n- Writing or editing bio content on the Gillings website\n- Restructuring the org chart hierarchy (the tool preserves the current structure; your team can add/remove people within it)",
+  "discountPercent": 0,
+  "monthlyFee": 0,
+  "upsells": [],
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  }
+}

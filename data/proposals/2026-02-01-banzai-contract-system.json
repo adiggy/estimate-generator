@@ -1,0 +1,93 @@
+{
+  "id": "2026-02-01-banzai-contract-system",
+  "createdAt": "2026-02-01",
+  "updatedAt": "2026-02-02",
+  "status": "draft",
+  "projectType": "app",
+  "archivePath": "archive/banzai-contract-system",
+  "clientId": "banzai",
+  "clientName": "Donald Whittier",
+  "clientEmail": "donaldwhittier@mac.com",
+  "clientCompany": "Banzai! Entertainment, Inc.",
+  "projectName": "Contract Form System",
+  "date": "February 2, 2026",
+  "expirationDate": "March 2, 2026",
+  "projectDescription": "A simple web-based system for collecting contract information from cast and crew. Staff fills in the deal terms, sends a unique link to each person to complete their personal details, then downloads the finished PDF to attach to DocuSign.",
+  "estimatedTimeline": "Estimated 4–6 weeks from project kickoff.",
+  "internalNotes": "V2 of proposal — simplified significantly per client feedback. Client was using Google Docs but got locked out due to multi-location access. 50-60 contracts per project. Two form types: Cast Contract and Crew Deal Memo. Staff fills back-office fields first, then sends unique link to talent/crew to complete personal info. No DocuSign API needed — just PDF download. Single shared admin password.",
+  "benefits": [
+    {
+      "icon": "Zap",
+      "title": "Two-Step Workflow",
+      "description": "Staff fills in deal terms first, then sends a unique link to each person to complete their personal details — no back-and-forth."
+    },
+    {
+      "icon": "PenTool",
+      "title": "PDF Download",
+      "description": "Download a completed contract cover page as a formatted PDF, ready to attach to your DocuSign envelope."
+    },
+    {
+      "icon": "Smartphone",
+      "title": "Mobile Friendly",
+      "description": "Cast and crew can fill out their forms from any phone, tablet, or computer — wherever they are."
+    },
+    {
+      "icon": "Shield",
+      "title": "No Lockouts",
+      "description": "Self-hosted system with no third-party restrictions — your team in NC, Portland, and Mexico can all work simultaneously."
+    },
+    {
+      "icon": "Layout",
+      "title": "Dashboard",
+      "description": "See all people across your projects at a glance — who's completed their form, who hasn't, and which contracts are ready for DocuSign."
+    },
+    {
+      "icon": "BarChart3",
+      "title": "Status Tracking",
+      "description": "Track each contract from pending through completed to ready for DocuSign."
+    }
+  ],
+  "phases": [
+    {
+      "name": "Forms & PDF Generation",
+      "description": "Build the Cast Contract and Crew Deal Memo forms with the two-step workflow (staff deal terms, then unique link for the person's info). PDF generation for completed contracts. Mobile-responsive.",
+      "lowHrs": 12,
+      "highHrs": 16,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Admin Dashboard",
+      "description": "Password-protected dashboard for staff to create contracts, send links, track completion status, and download PDFs.",
+      "lowHrs": 8,
+      "highHrs": 10,
+      "rate": 120,
+      "optional": false
+    },
+    {
+      "name": "Testing & Launch",
+      "description": "Cross-device testing, deployment, and a walkthrough for your team.",
+      "lowHrs": 2,
+      "highHrs": 3,
+      "rate": 120,
+      "optional": false
+    }
+  ],
+  "projectSpecifics": "## How It Works\n\n### Step 1 — Staff Creates a Contract\nStaff logs into the admin dashboard and creates a new contract entry by selecting the project, contract type (Cast or Crew), and filling in the deal terms:\n- **Compensation** (amount, currency MXN/USD, pay period)\n- **Profit Participation %**\n- **Rentals** (if applicable)\n- **Loan-Out Company, Phone & Address** (if applicable)\n- **Start Date & End Date**\n- **Screen Credit**\n- **Crew Title** (Crew) or **Role** (Cast)\n\n### Step 2 — Person Completes Their Info\nThe system generates a unique link for each person. No login required — they click the link and fill in:\n- **Full Name** (Nombre, Apellido paterno, Apellido materno)\n- **Address**\n- **Phone & WhatsApp**\n- **Email**\n- **Emergency Contact & Phone**\n- **Bank Account & CLABE** (two full lines for long Mexican banking numbers)\n\n### Step 3 — Download PDF\nOnce the person submits their info, the contract is marked complete on the dashboard. Staff can download the finished PDF and attach it to the DocuSign envelope.\n\n## Admin Dashboard\n\n- **Password-protected** login for staff\n- **All contracts at a glance** — organized by project, showing each person's name, contract type, and status\n- **Status indicators:** Pending (link sent, waiting on person), Complete (ready for PDF download)\n- **PDF download** button for completed contracts\n- **Create new contracts** with project selection and deal terms",
+  "exclusions": "- Full legal contract content (this system generates the cover page only — the remaining contract pages are your existing templates)\n- DocuSign integration or automation (PDFs are downloaded and manually attached to DocuSign)\n- Content creation or contract language review\n- Ongoing contract template modifications after launch (can be quoted separately)",
+  "discountPercent": 0,
+  "monthlyFee": 39,
+  "contactInfo": {
+    "name": "Adrial Dale",
+    "phone": "(919) 968-8818",
+    "email": "adrial@adrialdesigns.com",
+    "website": "www.adrialdesigns.com"
+  },
+  "upsells": [
+    {
+      "icon": "RefreshCw",
+      "title": "Ongoing Maintenance",
+      "description": "Updates, bug fixes, and feature enhancements over time."
+    }
+  ]
+}

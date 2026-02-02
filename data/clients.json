@@ -40,6 +40,22 @@
       "email": "waterinstitute@unc.edu",
       "discountPercent": 0,
       "notes": "Water Institute at UNC Gillings School of Global Public Health. Catherine is Conference & Project Coordinator. Website rebrand project due Feb 28, 2026 for UNC brand compliance."
+    },
+    {
+      "id": "banzai",
+      "name": "Donald Whittier",
+      "company": "Banzai! Entertainment, Inc.",
+      "email": "donaldwhittier@mac.com",
+      "discountPercent": 0,
+      "notes": "NC corporation producing episodic content (film/TV). Team operates from NC, Portland, and Mexico. 50-60 contracts per project. Contract form system project."
+    },
+    {
+      "id": "unc-gillings",
+      "name": "Elizabeth French",
+      "company": "UNC Gillings School of Global Public Health",
+      "email": "",
+      "discountPercent": 0,
+      "notes": "Senior Associate Dean for Strategy. Existing relationship — Adrial updates their org chart a few times per year. Interactive org chart tool project."
     }
   ]
 }
